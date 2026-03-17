@@ -188,16 +188,27 @@ export default function MapView() {
                                         Live
                                     </div>
                                 )}
-                                <div className="feed-video-placeholder">
-                                    <Video size={48} />
-                                    <span>
-                                        {selectedDrone.status === 'active'
-                                            ? `Streaming from ${selectedDrone.name}...`
-                                            : selectedDrone.status === 'idle'
+                                {selectedDrone.status === 'active' ? (
+                                    <video
+                                        className="feed-video-player"
+                                        autoPlay
+                                        muted
+                                        loop
+                                        playsInline
+                                    >
+                                        <source src="/droneVid.mp4" type="video/mp4" />
+                                        Your browser does not support the video tag.
+                                    </video>
+                                ) : (
+                                    <div className="feed-video-placeholder">
+                                        <Video size={48} />
+                                        <span>
+                                            {selectedDrone.status === 'idle'
                                                 ? `${selectedDrone.name} — Standby`
                                                 : `${selectedDrone.name} — Offline`}
-                                    </span>
-                                </div>
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="drone-feed-details">
                                 <h4 style={{ marginBottom: '12px', fontSize: '13px', fontWeight: 600 }}>

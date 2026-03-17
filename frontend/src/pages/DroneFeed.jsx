@@ -17,16 +17,27 @@ export default function DroneFeed() {
                                     Live
                                 </div>
                             )}
-                            <div className="feed-video-placeholder">
-                                <Video />
-                                <span>
-                                    {drone.status === 'active'
-                                        ? `Streaming from ${drone.name}...`
-                                        : drone.status === 'idle'
+                            {drone.status === 'active' ? (
+                                <video
+                                    className="feed-video-player"
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                >
+                                    <source src="/droneVid.mp4" type="video/mp4" />
+                                    Your browser does not support the video tag.
+                                </video>
+                            ) : (
+                                <div className="feed-video-placeholder">
+                                    <Video />
+                                    <span>
+                                        {drone.status === 'idle'
                                             ? `${drone.name} — Standby`
                                             : `${drone.name} — Offline`}
-                                </span>
-                            </div>
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className="feed-info">
                             <div className="feed-info-header">
