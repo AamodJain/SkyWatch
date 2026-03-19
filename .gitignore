@@ -1,0 +1,38 @@
+# Heavy files / Model weights
+*.pt
+*.pth
+*.mp4
+*.avi
+*.mov
+
+# Environment and IDE
+myenv/
+.venv/
+node_modules/
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+
+# Backend / Python junk
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+exp/
+
+# Generated Data
+output_heatmap_headcount.csv
+headcount_data.csv
+
+# Frontend
+dist/
+build/
+.DS_Store
+
+# User specifically wants to ignore this
+DroneCrowd/
