@@ -1,6 +1,5 @@
 # Heavy files / Model weights
 *.pt
-*.pth
 *.mp4
 *.avi
 *.mov
