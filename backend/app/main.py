@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.routers import density, drone
 
 app = FastAPI(
     title="Drone Surveillance API",
@@ -16,6 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(density.router)
+app.include_router(drone.router)
 
 @app.get("/")
 async def root():

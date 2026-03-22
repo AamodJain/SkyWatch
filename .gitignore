@@ -1,37 +1,31 @@
-# Heavy files / Model weights
-*.pt
-*.mp4
-*.avi
-*.mov
-
-# Environment and IDE
-myenv/
-.venv/
-node_modules/
-.env
-.env.*
-!.env.example
-.vscode/
-.idea/
-
-# Backend / Python junk
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.coverage
-htmlcov/
-exp/
+*.py[cod]
+*$py.class
 
-# Generated Data
-output_heatmap_headcount.csv
-headcount_data.csv
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env
 
-# Frontend
+# Frontend dependencies
+node_modules/
 dist/
-build/
-.DS_Store
+dist-ssr/
+.npm/
 
-# User specifically wants to ignore this
-DroneCrowd/
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Ensure model weights are NEVER ignored
+!*.pth
+!*.pt
+!*.weights

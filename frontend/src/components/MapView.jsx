@@ -103,67 +103,69 @@ function HeatmapLayer({ data }) {
     return null
 }
 
-// ─── Main Component ───────────────────────────────────
+    // ─── Main Component ───────────────────────────────────
 export default function MapView() {
     const center = [28.5900, 77.2200]
     const activeDrones = mockDrones.filter((d) => d.status !== 'offline')
     const [selectedDrone, setSelectedDrone] = useState(null)
-    const [csvData, setCsvData] = useState([])
-    const [currentFrame, setCurrentFrame] = useState(0)
+    const [liveData, setLiveData] = useState({ headcount: 0, headcount_density: 0, frame_index: 0 })
     const [maxIntensity, setMaxIntensity] = useState(100)
     const [isPlaying, setIsPlaying] = useState(true)
 
-    // Load CSV data
+    // Poll actual live API instead of CSV
     useEffect(() => {
-        fetch('/headcount_data.csv')
-            .then((res) => res.text())
-            .then((text) => {
-                const parsed = parseCSV(text)
-                setCsvData(parsed)
-            })
-            .catch((err) => console.error('Failed to load CSV:', err))
-    }, [])
+        let frameCounter = 0;
+        const fetchDensity = async () => {
+            if (!isPlaying) return;
+            try {
+                const res = await fetch('http://localhost:8000/api/density/current');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.current_data) {
+                        frameCounter++;
+                        setLiveData({
+                            headcount: data.current_data.points_count,
+                            headcount_density: data.current_data.headcount,
+                            frame_index: frameCounter
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching live density", err);
+            }
+        };
 
-    // Frame animation timer
-    useEffect(() => {
-        if (!isPlaying || csvData.length === 0) return
-        const interval = setInterval(() => {
-            setCurrentFrame((prev) => (prev + 1) % csvData.length)
-        }, 200) // ~5 fps playback
-        return () => clearInterval(interval)
-    }, [isPlaying, csvData.length])
+        fetchDensity();
+        const interval = setInterval(fetchDensity, 1000); // refresh every 1s
+        return () => clearInterval(interval);
+    }, [isPlaying]);
 
-    // Get current frame data
-    const frameData = csvData[currentFrame] || { frame_index: 0, headcount: 0, headcount_density: 0 }
-
-    // Assign one drone (DRN-001) to use the CSV data
-    const liveDroneId = 'DRN-001'
+    // Use liveData as frameData
+    const frameData = liveData;
 
     // Generate dynamic heatmap data based on the current frame density
     const dynamicHeatmapData = useMemo(() => {
         if (!frameData.headcount_density) return [];
-        
-        const liveDrone = activeDrones.find(d => d.id === liveDroneId);
-        if (!liveDrone) return [];
 
-        // Base intensity scaled from 0 to 1
+        let points = [];
         const intensity = Math.min(frameData.headcount_density / maxIntensity, 1.0);
         
-        // Generate a cluster of points around the drone to simulate a crowd heatmap
-        const points = [];
-        points.push([liveDrone.latitude, liveDrone.longitude, intensity]);
-        
-        // Add random spread points based on intensity
-        const spreadCount = Math.floor(intensity * 15);
-        for(let i=0; i < spreadCount; i++) {
-            const latOffset = (Math.random() - 0.5) * 0.003;
-            const lngOffset = (Math.random() - 0.5) * 0.003;
-            points.push([
-                liveDrone.latitude + latOffset, 
-                liveDrone.longitude + lngOffset, 
-                intensity * 0.8 * Math.random()
-            ]);
-        }
+        activeDrones.forEach(liveDrone => {
+            if (liveDrone.status !== 'active') return;
+            
+            points.push([liveDrone.latitude, liveDrone.longitude, intensity]);
+            
+            const spreadCount = Math.floor(intensity * 15);
+            for(let i=0; i < spreadCount; i++) {
+                const latOffset = (Math.random() - 0.5) * 0.003;
+                const lngOffset = (Math.random() - 0.5) * 0.003;
+                points.push([
+                    liveDrone.latitude + latOffset, 
+                    liveDrone.longitude + lngOffset, 
+                    intensity * 0.8 * Math.random()
+                ]);
+            }
+        });
         
         return points;
     }, [frameData.headcount_density, maxIntensity, activeDrones]);
@@ -175,11 +177,9 @@ export default function MapView() {
                     <div className="map-header-title">Live Heatmap View</div>
                     <div className="map-header-subtitle">
                         Real-time crowd density overlay · {activeDrones.length} active drones
-                        {csvData.length > 0 && (
-                            <span style={{ marginLeft: 12, color: '#10b981' }}>
-                                · Frame {frameData.frame_index}/{csvData.length - 1}
-                            </span>
-                        )}
+                        <span style={{ marginLeft: 12, color: '#10b981' }}>
+                            · Live Frame {frameData.frame_index}
+                        </span>
                     </div>
                 </div>
                 <div className="map-controls">
@@ -196,7 +196,7 @@ export default function MapView() {
                 />
                 <HeatmapLayer data={dynamicHeatmapData} />
                 {activeDrones.map((drone) => {
-                    const isLiveDrone = drone.id === liveDroneId
+                    const isLiveDrone = drone.status === 'active'
                     const headcount = isLiveDrone ? frameData.headcount_density : drone.peopleCounted
                     const color = getHeatColor(headcount, maxIntensity)
                     const densityLabel = getDensityLabel(headcount, maxIntensity)
@@ -255,32 +255,12 @@ export default function MapView() {
             </div>
 
             {/* ─── Playback Controls ─── */}
-            {csvData.length > 0 && (
-                <div className="playback-controls">
-                    <button
-                        className="playback-btn"
-                        onClick={() => setIsPlaying(!isPlaying)}
-                        id="playback-toggle"
-                    >
-                        {isPlaying ? '⏸' : '▶'}
-                    </button>
-                    <input
-                        type="range"
-                        min="0"
-                        max={csvData.length - 1}
-                        value={currentFrame}
-                        onChange={(e) => {
-                            setCurrentFrame(Number(e.target.value))
-                            setIsPlaying(false)
-                        }}
-                        className="frame-scrubber"
-                        id="frame-scrubber"
-                    />
-                    <span className="frame-label">
-                        F{frameData.frame_index} | {Math.round(frameData.headcount_density)} ppl
-                    </span>
-                </div>
-            )}
+            {/* ─── Live Data Badge ─── */}
+            <div className="playback-controls">
+                <span className="frame-label">
+                    Live F{frameData.frame_index} | {Math.round(frameData.headcount_density)} ppl
+                </span>
+            </div>
 
             {/* ─── Legend ─── */}
             <div className="map-legend">
@@ -344,7 +324,7 @@ export default function MapView() {
                                         loop
                                         playsInline
                                     >
-                                        <source src="/droneVid.mp4" type="video/mp4" />
+                                        <source src="http://localhost:5173/droneVid.mp4" type="video/mp4" />
                                         Your browser does not support the video tag.
                                     </video>
                                 ) : (
@@ -381,7 +361,7 @@ export default function MapView() {
                                 <div className="detail-item">
                                     <Users size={14} />
                                     <span>
-                                        {selectedDrone.id === liveDroneId
+                                        {selectedDrone.status === 'active'
                                             ? `${Math.round(frameData.headcount_density)} people detected`
                                             : `${selectedDrone.peopleCounted} people detected`}
                                     </span>
@@ -418,7 +398,7 @@ export default function MapView() {
                                 </div>
 
                                 {/* ─── Live CSV Data Panel ─── */}
-                                {selectedDrone.id === liveDroneId && csvData.length > 0 && (
+                                {selectedDrone.status === 'active' && (
                                     <div className="live-csv-panel">
                                         <h4 style={{ margin: '16px 0 10px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <BarChart3 size={14} />
@@ -449,24 +429,7 @@ export default function MapView() {
                                             </div>
                                         </div>
 
-                                        {/* Mini history bar chart */}
-                                        <div className="csv-mini-chart">
-                                            {csvData.slice(
-                                                Math.max(0, currentFrame - 29),
-                                                currentFrame + 1
-                                            ).map((d, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="csv-mini-bar"
-                                                    style={{
-                                                        height: `${Math.min(100, (d.headcount_density / maxIntensity) * 100)}%`,
-                                                        background: getHeatColor(d.headcount_density, maxIntensity),
-                                                        opacity: i === Math.min(29, currentFrame) ? 1 : 0.5,
-                                                    }}
-                                                    title={`Frame ${d.frame_index}: ${d.headcount_density.toFixed(1)}`}
-                                                />
-                                            ))}
-                                        </div>
+                                        {/* Mini history bar chart removed for live stream */}
                                     </div>
                                 )}
                             </div>

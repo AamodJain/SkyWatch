@@ -1,17 +1,39 @@
+import { useState, useEffect } from 'react'
 import { Users, Plane, Activity, AlertTriangle } from 'lucide-react'
 import { mockDrones } from '../data/mockData'
 
 export default function DensityStats() {
-    const totalPeople = mockDrones.reduce((sum, d) => sum + d.peopleCounted, 0)
+    const [liveData, setLiveData] = useState({ headcount: 0 });
+
+    useEffect(() => {
+        const fetchDensity = async () => {
+            try {
+                const res = await fetch('http://localhost:8000/api/density/current');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.current_data) setLiveData(data.current_data);
+                }
+            } catch (err) {
+                console.error("Error fetching live density", err);
+            }
+        };
+
+        fetchDensity();
+        const interval = setInterval(fetchDensity, 1000); // Poll every 1 second
+        return () => clearInterval(interval);
+    }, []);
+
+    // Use liveData.headcount instead of mock calculation
+    const totalPeople = Math.round(liveData.headcount) || 0;
     const activeDrones = mockDrones.filter((d) => d.status === 'active').length
     const avgDensity = Math.round(totalPeople / (activeDrones || 1))
-    const alertsCount = mockDrones.filter((d) => d.peopleCounted > 400).length
+    const alertsCount = totalPeople > 400 ? 1 : 0; // Simple alert if total people > 400
 
     const stats = [
         {
             label: 'Total People Detected',
             value: totalPeople.toLocaleString(),
-            trend: '+12%',
+            trend: 'Live Stream',
             trendDir: 'up',
             icon: Users,
             color: 'blue',

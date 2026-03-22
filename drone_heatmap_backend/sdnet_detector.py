@@ -77,7 +77,17 @@ class SDNetDetector:
 
     def _preprocess_frame(self, frame_bgr: np.ndarray) -> torch.Tensor:
         """Convert an OpenCV BGR frame to a normalized tensor."""
-        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        h, w = frame_bgr.shape[:2]
+        
+        # Aggressive downscaling to speed up CPU inference (targeting ~200ms)
+        target_w = 480
+        if w > target_w:
+            target_h = int(h * (target_w / w))
+            frame_resized = cv2.resize(frame_bgr, (target_w, target_h))
+        else:
+            frame_resized = frame_bgr
+
+        frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(frame_rgb)
         tensor = self.img_transform(pil_img)
         return tensor
