@@ -2,7 +2,7 @@ import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
-import { mockDensityHistory, mockZoneDensity } from '../data/mockData'
+import { useEffect, useMemo, useState } from 'react'
 
 const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444']
 
@@ -16,9 +16,58 @@ const customTooltipStyle = {
 }
 
 export default function Analytics() {
-    const pieData = mockZoneDensity
-        .filter((z) => z.density > 0)
-        .map((z) => ({ name: z.zone, value: z.density }))
+    const [timeline, setTimeline] = useState([])
+    const [drones, setDrones] = useState([])
+
+    useEffect(() => {
+        const fetchLive = async () => {
+            try {
+                const [densityRes, dronesRes] = await Promise.all([
+                    fetch('http://localhost:8000/api/density/current'),
+                    fetch('http://localhost:8000/api/drones/'),
+                ])
+
+                if (dronesRes.ok) {
+                    const dronesData = await dronesRes.json()
+                    setDrones(dronesData.drones || [])
+                }
+
+                if (densityRes.ok) {
+                    const densityData = await densityRes.json()
+                    const current = densityData.current_data || {}
+                    const now = new Date()
+                    const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    setTimeline((prev) => {
+                        const next = [
+                            ...prev,
+                            {
+                                time: label,
+                                density: Number(current.headcount || 0),
+                                people: Number(current.points_count || 0),
+                            },
+                        ]
+                        return next.slice(-30)
+                    })
+                }
+            } catch (err) {
+                console.error('Failed to load analytics data:', err)
+            }
+        }
+
+        fetchLive()
+        const interval = setInterval(fetchLive, 1000)
+        return () => clearInterval(interval)
+    }, [])
+
+    const zoneDensity = useMemo(
+        () => drones.map((d) => ({ zone: d.name, density: Number(d.peopleCounted || 0) })),
+        [drones],
+    )
+
+    const pieData = useMemo(
+        () => zoneDensity.filter((z) => z.density > 0).map((z) => ({ name: z.zone, value: z.density })),
+        [zoneDensity],
+    )
 
     return (
         <>
@@ -29,26 +78,18 @@ export default function Analytics() {
                 {/* Density Over Time */}
                 <div className="chart-card full-width" id="density-timeline-chart">
                     <div className="chart-title">Crowd Density Over Time</div>
-                    <div className="chart-subtitle">24-hour density trends across monitored zones</div>
+                    <div className="chart-subtitle">Live density timeline from backend stream data</div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={mockDensityHistory}>
+                            <AreaChart data={timeline}>
                                 <defs>
-                                    <linearGradient id="gradConnaught" x1="0" y1="0" x2="0" y2="1">
+                                    <linearGradient id="gradDensity" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
                                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                     </linearGradient>
-                                    <linearGradient id="gradChandni" x1="0" y1="0" x2="0" y2="1">
+                                    <linearGradient id="gradPeople" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="gradHauz" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="gradNehru" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#2d3555" />
@@ -56,14 +97,10 @@ export default function Analytics() {
                                 <YAxis stroke="#64748b" fontSize={12} />
                                 <Tooltip contentStyle={customTooltipStyle} />
                                 <Legend />
-                                <Area type="monotone" dataKey="connaught" name="Connaught Pl."
-                                    stroke="#3b82f6" fill="url(#gradConnaught)" strokeWidth={2} />
-                                <Area type="monotone" dataKey="chandni" name="Chandni Chowk"
-                                    stroke="#10b981" fill="url(#gradChandni)" strokeWidth={2} />
-                                <Area type="monotone" dataKey="hauz" name="Hauz Khas"
-                                    stroke="#8b5cf6" fill="url(#gradHauz)" strokeWidth={2} />
-                                <Area type="monotone" dataKey="nehru" name="Nehru Place"
-                                    stroke="#f59e0b" fill="url(#gradNehru)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="density" name="Density"
+                                    stroke="#3b82f6" fill="url(#gradDensity)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="people" name="People"
+                                    stroke="#10b981" fill="url(#gradPeople)" strokeWidth={2} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -72,16 +109,16 @@ export default function Analytics() {
                 {/* Zone Density Bar Chart */}
                 <div className="chart-card" id="zone-density-chart">
                     <div className="chart-title">Zone-wise Density</div>
-                    <div className="chart-subtitle">Current person count by monitored zone</div>
+                    <div className="chart-subtitle">Current person count by live stream</div>
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={mockZoneDensity} layout="vertical">
+                            <BarChart data={zoneDensity} layout="vertical">
                                 <CartesianGrid strokeDasharray="3 3" stroke="#2d3555" />
                                 <XAxis type="number" stroke="#64748b" fontSize={12} />
                                 <YAxis dataKey="zone" type="category" stroke="#64748b" fontSize={11} width={100} />
                                 <Tooltip contentStyle={customTooltipStyle} />
                                 <Bar dataKey="density" name="People" radius={[0, 6, 6, 0]}>
-                                    {mockZoneDensity.map((entry, index) => (
+                                    {zoneDensity.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Bar>

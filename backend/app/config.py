@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,6 +19,12 @@ class Settings:
     FRAME_INTERVAL: int = int(os.getenv("FRAME_INTERVAL", "1"))
     YOLO_MODEL: str = os.getenv("YOLO_MODEL", "yolov8n.pt")
     CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))
+    MEDIA_VIDEOS_DIR: str = os.getenv(
+        "MEDIA_VIDEOS_DIR",
+        str(Path(__file__).resolve().parents[2] / "media" / "videos"),
+    )
+    STREAM_STALE_SECONDS: int = int(os.getenv("STREAM_STALE_SECONDS", "5"))
+    ALLOW_DEBUG_PLAYBACK: bool = os.getenv("ALLOW_DEBUG_PLAYBACK", "false").lower() == "true"
 
 
 settings = Settings()

@@ -1,33 +1,71 @@
 import { useState, useEffect } from 'react'
 import { Users, Plane, Activity, AlertTriangle } from 'lucide-react'
-import { mockDrones } from '../data/mockData'
 
 export default function DensityStats() {
     const [liveData, setLiveData] = useState({ headcount: 0 });
+    const [activeDroneCount, setActiveDroneCount] = useState(0);
+    const [totalDroneCount, setTotalDroneCount] = useState(0);
+    const [criticalZonesCount, setCriticalZonesCount] = useState(0);
+    const [avgDensity, setAvgDensity] = useState(0);
+    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
 
     useEffect(() => {
-        const fetchDensity = async () => {
+        const fetchDrones = async () => {
             try {
-                const res = await fetch('http://localhost:8000/api/density/current');
+                const res = await fetch(`http://localhost:8000/api/drones/?include_debug=${debugPlayback}`);
                 if (res.ok) {
                     const data = await res.json();
-                    if (data.current_data) setLiveData(data.current_data);
+                    const drones = data.drones || [];
+                    const activeDrones = drones.filter((d) => d.status === 'active' || d.status === 'debug');
+
+                    setTotalDroneCount(drones.length);
+                    setActiveDroneCount(activeDrones.length);
+
+                    const totalPeopleFromDrones = activeDrones.reduce(
+                        (sum, d) => sum + Number(d.headcountDensity || 0),
+                        0,
+                    );
+                    setLiveData({ headcount: totalPeopleFromDrones });
+
+                    const computedAvgDensity = Math.round(totalPeopleFromDrones / (activeDrones.length || 1));
+                    setAvgDensity(computedAvgDensity);
+
+                    let thresholdsByDrone = {};
+                    try {
+                        const raw = localStorage.getItem('maxIntensityByDrone');
+                        if (raw) {
+                            const parsed = JSON.parse(raw);
+                            if (parsed && typeof parsed === 'object') {
+                                thresholdsByDrone = parsed;
+                            }
+                        }
+                    } catch {
+                        thresholdsByDrone = {};
+                    }
+
+                    const criticalCount = activeDrones.reduce((count, d) => {
+                        const threshold = Number(thresholdsByDrone[d.id] ?? 100);
+                        const density = Number(d.headcountDensity || 0);
+                        return count + (density >= threshold ? 1 : 0);
+                    }, 0);
+                    setCriticalZonesCount(criticalCount);
                 }
             } catch (err) {
-                console.error("Error fetching live density", err);
+                console.error("Error fetching drones", err);
             }
         };
 
-        fetchDensity();
-        const interval = setInterval(fetchDensity, 1000); // Poll every 1 second
-        return () => clearInterval(interval);
+        fetchDrones();
+        const droneInterval = setInterval(fetchDrones, 1000);
+        return () => {
+            clearInterval(droneInterval);
+        };
     }, []);
 
-    // Use liveData.headcount instead of mock calculation
+    // Use liveData.headcount derived from active drone streams
     const totalPeople = Math.round(liveData.headcount) || 0;
-    const activeDrones = mockDrones.filter((d) => d.status === 'active').length
-    const avgDensity = Math.round(totalPeople / (activeDrones || 1))
-    const alertsCount = totalPeople > 400 ? 1 : 0; // Simple alert if total people > 400
+    const activeDrones = activeDroneCount
+    const alertsCount = criticalZonesCount;
 
     const stats = [
         {
@@ -40,7 +78,7 @@ export default function DensityStats() {
         },
         {
             label: 'Active Drones',
-            value: `${activeDrones} / ${mockDrones.length}`,
+            value: `${activeDrones} / ${totalDroneCount}`,
             trend: 'Online',
             trendDir: 'up',
             icon: Plane,

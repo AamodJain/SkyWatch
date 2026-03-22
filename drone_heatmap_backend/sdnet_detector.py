@@ -53,7 +53,7 @@ class SDNetDetector:
         self.model = Video_Counter(cfg, _cfg_data)
         
         # Load weights
-        state_dict = torch.load(weights_path, map_location='cpu')
+        state_dict = torch.load(weights_path, map_location='cpu', weights_only=False)
         # Strip "module." prefix if present (from DataParallel training)
         clean_state = {}
         for k, v in state_dict.items():

@@ -1,15 +1,22 @@
 import { Plane, Battery, Gauge, MapPin } from 'lucide-react'
 
-export default function DroneCard({ drone }) {
+export default function DroneCard({ drone, threshold = 100, isCritical = false, onClick, isFocused = false }) {
+    const badgeClass = isCritical ? 'critical' : drone.status
+    const badgeLabel = isCritical ? 'critical' : drone.status
+
     return (
-        <div className="drone-card" id={`drone-${drone.id}`}>
+        <div
+            className={`drone-card ${isFocused ? 'focused' : ''} ${isCritical ? 'critical' : ''}`}
+            id={`drone-${drone.id}`}
+            onClick={onClick}
+        >
             <div className="drone-card-top">
                 <div className="drone-name">
                     <Plane size={16} />
                     {drone.name}
                 </div>
-                <span className={`drone-status-badge ${drone.status}`}>
-                    {drone.status}
+                <span className={`drone-status-badge ${badgeClass}`}>
+                    {badgeLabel}
                 </span>
             </div>
 
@@ -31,9 +38,9 @@ export default function DroneCard({ drone }) {
                 <div className="drone-stat">
                     <div className="drone-stat-value">
                         <MapPin size={12} style={{ display: 'inline', marginRight: 4 }} />
-                        {drone.peopleCounted}
+                        {threshold}
                     </div>
-                    <div className="drone-stat-label">People</div>
+                    <div className="drone-stat-label">Threshold</div>
                 </div>
             </div>
         </div>
