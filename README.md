@@ -105,6 +105,8 @@ python3 stream_processor.py \
 
 - Video files are served from `media/videos` via backend `/videos/*` routes.
 - Stream defaults are centralized in `drone_heatmap_backend/stream_config.py`.
+- Model selection for crowd density can be switched with `--model` (e.g. `sdnet` or `yolo`).
+- For SDNet, model path auto-detects the first `.pth` in `MovingDroneCrowd` if `--model-path` is omitted.
 - Loop behavior is controlled with `--loop true|false`.
 - If no live stream is active, drone cards may appear idle unless debug playback mode is enabled.
 

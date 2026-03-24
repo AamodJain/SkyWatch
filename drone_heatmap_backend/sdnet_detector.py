@@ -138,6 +138,11 @@ class SDNetDetector:
 
         return headcount, density_map, points
 
+    def detect_people(self, frame_bgr: np.ndarray):
+        """Backwards-compatible entrypoint for map-based crowd detector."""
+        headcount, _, points = self.detect(frame_bgr)
+        return points, headcount
+
     def _extract_points(self, density_map: np.ndarray, orig_w: int, orig_h: int):
         """
         Extract (x, y) coordinates of people from the density map using local maxima.

@@ -18,6 +18,10 @@ def process_stream(
     longitude: float | None = None,
     altitude: float | None = None,
     loop_video: bool = True,
+    model_type: str = "sdnet",
+    model_path: str | None = None,
+    device: str | None = None,
+    yolo_confidence: float = 0.35,
 ):
     """
     Process a live video stream (file or URL) at a given FPS,
@@ -34,8 +38,13 @@ def process_stream(
     # grabbing a frame, reading it, then time.sleep(1/target_fps) works better.
     # We will use explicit sleep to enforce 5 FPS processing on the live feed.
     
-    detector = PersonDetector()
-    
+    detector = PersonDetector(
+        model_type=model_type,
+        model_path=model_path,
+        device=device,
+        confidence=yolo_confidence,
+    )
+
     loop_delay = 1.0 / target_fps
     
     frame_count = 0
@@ -106,8 +115,12 @@ if __name__ == "__main__":
     parser.add_argument("--longitude", type=float, default=None, help="Optional longitude for active feed")
     parser.add_argument("--altitude", type=float, default=None, help="Optional altitude meters for active feed")
     parser.add_argument("--loop", type=bool, default=DEFAULT_LOOP_VIDEO, help="Loop video on end (default: True)")
+    parser.add_argument("--model", type=str, default="sdnet", choices=["sdnet", "yolo"], help="Detector type")
+    parser.add_argument("--model-path", type=str, default=None, help="Optional model weights path")
+    parser.add_argument("--device", type=str, default=None, help="Device for model compute: cuda or cpu")
+    parser.add_argument("--yolo-confidence", type=float, default=0.35, help="YOLO confidence threshold")
     args = parser.parse_args()
-    
+
     process_stream(
         args.source,
         args.fps,
@@ -118,4 +131,8 @@ if __name__ == "__main__":
         longitude=args.longitude,
         altitude=args.altitude,
         loop_video=args.loop,
+        model_type=args.model,
+        model_path=args.model_path,
+        device=args.device,
+        yolo_confidence=args.yolo_confidence,
     )
