@@ -118,3 +118,22 @@ python stream_processor.py \
    ```
 
 4. **Verify**: Open http://localhost:5173, click on drone feed card or map marker to see video with loop setting applied
+
+
+
+
+
+
+
+
+source ../backend/venv/bin/activate
+python stream_processor.py \
+  --source "http://localhost:8000/videos/droneVid3.mp4" \
+  --drone-id DRN-007 \
+  --drone-name "Alpha-3" \
+  --zone "Connaught Place dkflasd" \
+  --latitude 38.6139 \
+  --longitude 77.2090 \
+  --altitude 120 \
+  --fps 5 \
+  --loop true

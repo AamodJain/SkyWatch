@@ -25,6 +25,9 @@ class Settings:
     )
     STREAM_STALE_SECONDS: int = int(os.getenv("STREAM_STALE_SECONDS", "5"))
     ALLOW_DEBUG_PLAYBACK: bool = os.getenv("ALLOW_DEBUG_PLAYBACK", "false").lower() == "true"
+    HISTORY_SAMPLE_SECONDS: int = int(os.getenv("HISTORY_SAMPLE_SECONDS", "5"))
+    HISTORY_DEFAULT_WINDOW_HOURS: int = int(os.getenv("HISTORY_DEFAULT_WINDOW_HOURS", "2"))
+    HISTORY_MAX_WINDOW_HOURS: int = int(os.getenv("HISTORY_MAX_WINDOW_HOURS", "6"))
 
 
 settings = Settings()

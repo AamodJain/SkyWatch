@@ -1,10 +1,31 @@
 import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Brush,
 } from 'recharts'
 import { useEffect, useMemo, useState } from 'react'
 
 const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444']
+const TIME_WINDOWS = ['15m', '30m', '1h', '2h', '6h']
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
+function parseApiTimestamp(raw) {
+    if (!raw) {
+        return new Date()
+    }
+    // Backend may return ISO timestamps without timezone (UTC-naive).
+    // Append Z so browser interprets them as UTC, then render in local time.
+    const hasTimezone = /Z$|[+-]\d{2}:?\d{2}$/.test(raw)
+    return new Date(hasTimezone ? raw : `${raw}Z`)
+}
+
+function formatTimelineLabel(date, windowKey) {
+    const includeSeconds = windowKey === '15m' || windowKey === '30m' || windowKey === '1h'
+    return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(includeSeconds ? { second: '2-digit' } : {}),
+    })
+}
 
 const customTooltipStyle = {
     backgroundColor: '#1a1f36',
@@ -18,46 +39,131 @@ const customTooltipStyle = {
 export default function Analytics() {
     const [timeline, setTimeline] = useState([])
     const [drones, setDrones] = useState([])
+    const [selectedWindow, setSelectedWindow] = useState('30m')
+    const [selectedDrone, setSelectedDrone] = useState('all')
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+    const [historyError, setHistoryError] = useState('')
+
+    const intervalByWindow = {
+        '15m': 5,
+        '30m': 5,
+        '1h': 5,
+        '2h': 10,
+        '6h': 30,
+    }
 
     useEffect(() => {
-        const fetchLive = async () => {
+        const fetchDrones = async () => {
             try {
-                const [densityRes, dronesRes] = await Promise.all([
-                    fetch('http://localhost:8000/api/density/current'),
-                    fetch('http://localhost:8000/api/drones/'),
-                ])
-
+                const dronesRes = await fetch(`${API_BASE}/api/drones/`)
                 if (dronesRes.ok) {
                     const dronesData = await dronesRes.json()
                     setDrones(dronesData.drones || [])
                 }
-
-                if (densityRes.ok) {
-                    const densityData = await densityRes.json()
-                    const current = densityData.current_data || {}
-                    const now = new Date()
-                    const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                    setTimeline((prev) => {
-                        const next = [
-                            ...prev,
-                            {
-                                time: label,
-                                density: Number(current.headcount || 0),
-                                people: Number(current.points_count || 0),
-                            },
-                        ]
-                        return next.slice(-30)
-                    })
-                }
             } catch (err) {
-                console.error('Failed to load analytics data:', err)
+                console.error('Failed to load drone list:', err)
             }
         }
 
-        fetchLive()
-        const interval = setInterval(fetchLive, 1000)
-        return () => clearInterval(interval)
-    }, [])
+        const fetchHistory = async () => {
+            try {
+                setIsLoadingHistory(true)
+                setHistoryError('')
+
+                const intervalSeconds = intervalByWindow[selectedWindow] || 10
+                const params = new URLSearchParams({
+                    window: selectedWindow,
+                    interval_seconds: String(intervalSeconds),
+                })
+
+                if (selectedDrone !== 'all') {
+                    params.set('drone_id', selectedDrone)
+                }
+
+                const historyRes = await fetch(`${API_BASE}/api/density/history?${params.toString()}`)
+                if (!historyRes.ok) {
+                    throw new Error(`History request failed with status ${historyRes.status}`)
+                }
+
+                const history = await historyRes.json()
+
+                if (Array.isArray(history.points)) {
+                    const normalized = history.points.map((point) => {
+                        const date = parseApiTimestamp(point.timestamp)
+                        return {
+                            timestamp: point.timestamp,
+                            timeLabel: formatTimelineLabel(date, selectedWindow),
+                            people: Number(point.people_count || 0),
+                            density: Number(point.density_level || 0),
+                        }
+                    })
+                    setTimeline(normalized)
+                    return
+                }
+
+                const pointsByTimestamp = new Map()
+                for (const series of history.series || []) {
+                    for (const point of series.points || []) {
+                        const key = point.timestamp
+                        if (!pointsByTimestamp.has(key)) {
+                            pointsByTimestamp.set(key, {
+                                timestamp: key,
+                                people: 0,
+                                densityTotal: 0,
+                                densityCount: 0,
+                            })
+                        }
+
+                        const item = pointsByTimestamp.get(key)
+                        item.people += Number(point.people_count || 0)
+                        item.densityTotal += Number(point.density_level || 0)
+                        item.densityCount += 1
+                    }
+                }
+
+                const aggregated = Array.from(pointsByTimestamp.values())
+                    .sort((a, b) => parseApiTimestamp(a.timestamp) - parseApiTimestamp(b.timestamp))
+                    .map((item) => {
+                        const date = parseApiTimestamp(item.timestamp)
+                        return {
+                            timestamp: item.timestamp,
+                            timeLabel: formatTimelineLabel(date, selectedWindow),
+                            people: item.people,
+                            density: item.densityCount ? item.densityTotal / item.densityCount : 0,
+                        }
+                    })
+
+                setTimeline(aggregated)
+
+            } catch (err) {
+                console.error('Failed to load history:', err)
+                setHistoryError('Could not load historical data')
+            } finally {
+                setIsLoadingHistory(false)
+            }
+        }
+
+        fetchDrones()
+        fetchHistory()
+
+        const dronesInterval = setInterval(fetchDrones, 5000)
+        const historyInterval = setInterval(fetchHistory, 5000)
+
+        return () => {
+            clearInterval(dronesInterval)
+            clearInterval(historyInterval)
+        }
+    }, [selectedWindow, selectedDrone])
+
+    useEffect(() => {
+        if (selectedDrone === 'all') {
+            return
+        }
+        const hasDrone = drones.some((d) => d.id === selectedDrone)
+        if (!hasDrone) {
+            setSelectedDrone('all')
+        }
+    }, [drones, selectedDrone])
 
     const zoneDensity = useMemo(
         () => drones.map((d) => ({ zone: d.name, density: Number(d.peopleCounted || 0) })),
@@ -78,8 +184,41 @@ export default function Analytics() {
                 {/* Density Over Time */}
                 <div className="chart-card full-width" id="density-timeline-chart">
                     <div className="chart-title">Crowd Density Over Time</div>
-                    <div className="chart-subtitle">Live density timeline from backend stream data</div>
+                    <div className="chart-subtitle">Zoomable people trend with 15m / 30m / 1h / 2h / 6h windows</div>
+                    <div className="analytics-controls" style={{ marginBottom: '14px' }}>
+                        <div className="window-switcher">
+                            {TIME_WINDOWS.map((range) => (
+                                <button
+                                    key={range}
+                                    type="button"
+                                    className={`window-btn ${selectedWindow === range ? 'active' : ''}`}
+                                    onClick={() => setSelectedWindow(range)}
+                                >
+                                    {range.toUpperCase()}
+                                </button>
+                            ))}
+                        </div>
+
+                        <select
+                            className="analytics-select"
+                            value={selectedDrone}
+                            onChange={(e) => setSelectedDrone(e.target.value)}
+                        >
+                            <option value="all">All Drones</option>
+                            {drones.map((drone) => (
+                                <option key={drone.id} value={drone.id}>
+                                    {drone.name} ({drone.id})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                     <div className="chart-container">
+                        {historyError ? (
+                            <div className="chart-empty-state">{historyError}</div>
+                        ) : null}
+                        {!historyError && !isLoadingHistory && timeline.length === 0 ? (
+                            <div className="chart-empty-state">No history yet. Start a stream to collect points.</div>
+                        ) : null}
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={timeline}>
                                 <defs>
@@ -93,7 +232,7 @@ export default function Analytics() {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#2d3555" />
-                                <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
+                                <XAxis dataKey="timeLabel" stroke="#64748b" fontSize={12} />
                                 <YAxis stroke="#64748b" fontSize={12} />
                                 <Tooltip contentStyle={customTooltipStyle} />
                                 <Legend />
@@ -101,6 +240,13 @@ export default function Analytics() {
                                     stroke="#3b82f6" fill="url(#gradDensity)" strokeWidth={2} />
                                 <Area type="monotone" dataKey="people" name="People"
                                     stroke="#10b981" fill="url(#gradPeople)" strokeWidth={2} />
+                                <Brush
+                                    dataKey="timeLabel"
+                                    height={24}
+                                    stroke="#3b82f6"
+                                    travellerWidth={10}
+                                    fill="#111827"
+                                />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
