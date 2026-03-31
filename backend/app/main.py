@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
-from app.routers import density, drone
+from app.routers import density, drone, alerts
 import os
 
 app = FastAPI(
@@ -21,6 +21,7 @@ app.add_middleware(
 
 app.include_router(density.router)
 app.include_router(drone.router)
+app.include_router(alerts.router)
 
 os.makedirs(settings.MEDIA_VIDEOS_DIR, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=settings.MEDIA_VIDEOS_DIR), name="videos")

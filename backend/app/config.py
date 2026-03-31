@@ -26,5 +26,9 @@ class Settings:
     STREAM_STALE_SECONDS: int = int(os.getenv("STREAM_STALE_SECONDS", "5"))
     ALLOW_DEBUG_PLAYBACK: bool = os.getenv("ALLOW_DEBUG_PLAYBACK", "false").lower() == "true"
 
+    # Telegram Integration
+    API_KEY_SECRET: str = os.getenv("API_KEY_SECRET", "sk_skywatch_local_secret_123")
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_IDS: str = os.getenv("TELEGRAM_CHAT_IDS", "")
 
 settings = Settings()

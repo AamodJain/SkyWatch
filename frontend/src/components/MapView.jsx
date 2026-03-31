@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Circle, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { X, Video, BarChart3, SlidersHorizontal } from 'lucide-react'
+import { useNotification } from '../context/NotificationContext'
 
 // Fix default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -109,20 +110,24 @@ function HeatmapLayer({ data }) {
                 heatContainer.style.pointerEvents = 'none'
             }
 
-            heatLayerRef.current.setLatLngs(data)
-            heatLayerRef.current.redraw()
+            if (heatLayerRef.current._map) {
+                heatLayerRef.current.setLatLngs(data)
+                heatLayerRef.current.redraw()
+            }
         })
     }, [map])
 
     useEffect(() => {
         if (!heatLayerRef.current) return
-        heatLayerRef.current.setLatLngs(data)
-        heatLayerRef.current.redraw()
+        if (heatLayerRef.current._map) {
+            heatLayerRef.current.setLatLngs(data)
+            heatLayerRef.current.redraw()
+        }
     }, [data])
 
     useEffect(() => {
         const forceRedraw = () => {
-            if (!heatLayerRef.current) return
+            if (!heatLayerRef.current || !heatLayerRef.current._map) return
             heatLayerRef.current.redraw()
         }
 
@@ -169,6 +174,7 @@ export default function MapView({
     maxIntensityByDrone = {},
     setMaxIntensityByDrone = () => {},
 }) {
+    const { processStreamData } = useNotification()
     const defaultCenter = [28.5900, 77.2200]
     const detailsPanelRef = useRef(null)
     const dragOffsetRef = useRef({ x: 0, y: 0 })
@@ -177,6 +183,16 @@ export default function MapView({
     const center = activeDrones.length > 0
         ? [Number(activeDrones[0].latitude || defaultCenter[0]), Number(activeDrones[0].longitude || defaultCenter[1])]
         : defaultCenter
+    
+    // Refs for intervals to prevent stale closures
+    const dronesRef = useRef(drones)
+    const maxIntensityRef = useRef(maxIntensityByDrone)
+    
+    useEffect(() => {
+        dronesRef.current = drones
+        maxIntensityRef.current = maxIntensityByDrone
+    }, [drones, maxIntensityByDrone])
+
     const [selectedDrone, setSelectedDrone] = useState(null)
     const [liveData, setLiveData] = useState({ headcount: 0, headcount_density: 0, frame_index: 0 })
     const [streamMetricsByVideo, setStreamMetricsByVideo] = useState({})
@@ -241,6 +257,9 @@ export default function MapView({
                         headcount_density: totalHeadcount,
                         frame_index: frameCounter
                     });
+                    
+                    // Trigger alert processing loop using refs to avoid stale closures
+                    processStreamData(dronesRef.current, byVideo, maxIntensityRef.current);
                 }
             } catch (err) {
                 console.error("Error fetching live density", err);
