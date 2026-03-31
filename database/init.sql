@@ -35,3 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_density_location
 -- Index on timestamp for time-range queries
 CREATE INDEX IF NOT EXISTS idx_density_timestamp
     ON density_records (timestamp DESC);
+
+-- Composite index for per-drone time-range queries
+CREATE INDEX IF NOT EXISTS idx_density_drone_timestamp
+    ON density_records (drone_id, timestamp DESC);

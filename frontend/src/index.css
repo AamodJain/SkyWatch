@@ -829,7 +829,77 @@ a {
 }
 
 .chart-container {
+  position: relative;
   height: 280px;
+}
+
+.analytics-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.window-switcher {
+  display: inline-flex;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  gap: 4px;
+}
+
+.window-btn {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.window-btn:hover {
+  color: var(--color-text-primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.window-btn.active {
+  background: var(--color-accent-blue);
+  color: #ffffff;
+}
+
+.analytics-select {
+  min-width: 220px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.analytics-select:focus {
+  border-color: var(--color-accent-blue);
+}
+
+.chart-empty-state {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 8px;
+  background: rgba(10, 14, 26, 0.4);
+  border-radius: var(--radius-sm);
 }
 
 /* ===== Leaflet Overrides ===== */

@@ -69,6 +69,32 @@ python3 stream_processor.py \
        --longitude 77.2090 \
        --altitude 100 \
        --loop true
+
+### IIT Ropar
+python3 stream_processor.py \
+       --source ../media/videos/droneVid2.mp4 \
+       --fps 5 \
+       --drone-id DRN-004 \
+       --drone-name Alpha-4 \
+       --zone "Live Stream Zone" \
+       --latitude 30.9683 \
+       --longitude 76.4732 \
+       --altitude 100 \
+       --loop true
+
+
+
+
+python3 stream_processor.py \
+       --source ../media/videos/droneVid3.mp4 \
+       --fps 5 \
+       --drone-id DRN-0014 \
+       --drone-name Alpha-6 \
+       --zone "Live Stream Zone" \
+      --latitude 28.7139 \
+       --longitude 77.2090 \
+       --altitude 100 \
+       --loop true
 ```
 
 ### Start a second stream (parallel terminal)
