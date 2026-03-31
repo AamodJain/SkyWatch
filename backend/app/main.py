@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.config import settings
-from app.db import init_db_pool, close_db_pool, ensure_schema
+from app.db import init_db_pool, close_db_pool, ensure_schema, is_using_memory_db
 from app.routers import density, drone, alerts
 import os
 
@@ -49,4 +49,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "db_backend": "sqlite_memory" if is_using_memory_db() else "postgres",
+    }
