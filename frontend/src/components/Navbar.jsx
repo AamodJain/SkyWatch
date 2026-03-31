@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell, Settings } from 'lucide-react'
+import { Bell, Settings, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
+import { useNotification } from '../context/NotificationContext'
 
 const pageTitles = {
     '/': 'Command Center',
@@ -11,10 +12,23 @@ const pageTitles = {
 export default function Navbar() {
     const location = useLocation()
     const [currentTime, setCurrentTime] = useState(new Date())
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+    const dropdownRef = useRef(null)
+    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification()
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
         return () => clearInterval(timer)
+    }, [])
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsNotificationOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
     const formatTime = (date) =>
@@ -49,9 +63,59 @@ export default function Navbar() {
                 <span className="navbar-time">
                     {formatDate(currentTime)} &nbsp;·&nbsp; {formatTime(currentTime)}
                 </span>
-                <button className="navbar-btn notification-badge" id="notifications-btn">
-                    <Bell size={18} />
-                </button>
+                
+                <div className="notification-wrapper" ref={dropdownRef}>
+                    <button 
+                        className={`navbar-btn ${unreadCount > 0 ? 'notification-badge' : ''}`}
+                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                    >
+                        <Bell size={18} />
+                        {unreadCount > 0 && <span className="notification-count">{unreadCount}</span>}
+                    </button>
+
+                    {isNotificationOpen && (
+                        <div className="notification-dropdown">
+                            <div className="notification-header">
+                                <h3>Notifications</h3>
+                                {unreadCount > 0 && (
+                                    <button className="mark-all-read" onClick={markAllAsRead}>
+                                        Mark all as read
+                                    </button>
+                                )}
+                            </div>
+                            
+                            <div className="notification-list">
+                                {notifications.length === 0 ? (
+                                    <div className="notification-empty">
+                                        <CheckCircle2 size={32} />
+                                        <p>You're all caught up!</p>
+                                    </div>
+                                ) : (
+                                    notifications.map(notif => (
+                                        <div 
+                                            key={notif.id} 
+                                            className={`notification-item ${notif.isRead ? 'read' : 'unread'} ${notif.type}`}
+                                            onClick={() => markAsRead(notif.id)}
+                                        >
+                                            <div className="notification-icon">
+                                                {notif.type === 'critical' ? <AlertTriangle size={18} /> : <Info size={18} />}
+                                            </div>
+                                            <div className="notification-content">
+                                                <div className="notification-title">{notif.droneName}</div>
+                                                <div className="notification-message">{notif.message}</div>
+                                                <div className="notification-time">
+                                                    {new Date(notif.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                                </div>
+                                            </div>
+                                            {!notif.isRead && <div className="notification-dot" />}
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 <button className="navbar-btn" id="settings-btn">
                     <Settings size={18} />
                 </button>
