@@ -53,7 +53,7 @@ class SDNetDetector:
         self.model = Video_Counter(cfg, _cfg_data)
         
         # Load weights
-        state_dict = torch.load(weights_path, map_location='cpu')
+        state_dict = torch.load(weights_path, map_location='cpu', weights_only=False)
         # Strip "module." prefix if present (from DataParallel training)
         clean_state = {}
         for k, v in state_dict.items():
@@ -77,7 +77,17 @@ class SDNetDetector:
 
     def _preprocess_frame(self, frame_bgr: np.ndarray) -> torch.Tensor:
         """Convert an OpenCV BGR frame to a normalized tensor."""
-        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        h, w = frame_bgr.shape[:2]
+        
+        # Aggressive downscaling to speed up CPU inference (targeting ~200ms)
+        target_w = 480
+        if w > target_w:
+            target_h = int(h * (target_w / w))
+            frame_resized = cv2.resize(frame_bgr, (target_w, target_h))
+        else:
+            frame_resized = frame_bgr
+
+        frame_rgb = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(frame_rgb)
         tensor = self.img_transform(pil_img)
         return tensor
@@ -127,6 +137,11 @@ class SDNetDetector:
         self.prev_tensor = cur_tensor.clone()
 
         return headcount, density_map, points
+
+    def detect_people(self, frame_bgr: np.ndarray):
+        """Backwards-compatible entrypoint for map-based crowd detector."""
+        headcount, _, points = self.detect(frame_bgr)
+        return points, headcount
 
     def _extract_points(self, density_map: np.ndarray, orig_w: int, orig_h: int):
         """

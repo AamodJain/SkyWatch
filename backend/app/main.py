@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config import settings
+from app.db import init_db_pool, close_db_pool, ensure_schema
+from app.routers import density, drone
+import os
 
 app = FastAPI(
     title="Drone Surveillance API",
@@ -16,6 +20,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(density.router)
+app.include_router(drone.router)
+
+os.makedirs(settings.MEDIA_VIDEOS_DIR, exist_ok=True)
+app.mount("/videos", StaticFiles(directory=settings.MEDIA_VIDEOS_DIR), name="videos")
+
+
+@app.on_event("startup")
+async def on_startup():
+    try:
+        init_db_pool()
+        ensure_schema()
+    except Exception as exc:
+        # Keep API available even when DB is temporarily unavailable.
+        print(f"Warning: could not initialize database pool: {exc}")
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    close_db_pool()
 
 @app.get("/")
 async def root():

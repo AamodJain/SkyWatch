@@ -604,6 +604,23 @@ a {
   background: var(--color-bg-card-hover);
 }
 
+.drone-card.focused {
+  border-color: rgba(59, 130, 246, 0.75);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3), 0 8px 22px rgba(37, 99, 235, 0.2);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.drone-card.critical {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25), 0 8px 22px rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.drone-card.critical:hover {
+  border-color: rgba(239, 68, 68, 0.9);
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .drone-card-top {
   display: flex;
   align-items: center;
@@ -641,6 +658,12 @@ a {
 .drone-status-badge.offline {
   color: var(--color-text-muted);
   background: rgba(100, 116, 139, 0.12);
+}
+
+.drone-status-badge.critical {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .drone-card-stats {
@@ -806,7 +829,77 @@ a {
 }
 
 .chart-container {
+  position: relative;
   height: 280px;
+}
+
+.analytics-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.window-switcher {
+  display: inline-flex;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  gap: 4px;
+}
+
+.window-btn {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.window-btn:hover {
+  color: var(--color-text-primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.window-btn.active {
+  background: var(--color-accent-blue);
+  color: #ffffff;
+}
+
+.analytics-select {
+  min-width: 220px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.analytics-select:focus {
+  border-color: var(--color-accent-blue);
+}
+
+.chart-empty-state {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  padding: 8px;
+  background: rgba(10, 14, 26, 0.4);
+  border-radius: var(--radius-sm);
 }
 
 /* ===== Leaflet Overrides ===== */
@@ -864,12 +957,19 @@ a {
   backdrop-filter: blur(4px);
 }
 
+.drone-feed-floating-panel {
+  position: fixed;
+  z-index: 1200;
+  width: min(440px, calc(100vw - 20px));
+  pointer-events: auto;
+}
+
 .drone-feed-modal {
   background: linear-gradient(145deg, rgba(26, 31, 54, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   max-width: 600px;
-  width: 90%;
+  width: 100%;
   max-height: 85vh;
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);

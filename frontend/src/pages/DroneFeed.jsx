@@ -1,17 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Video, MapPin, Battery, Users, Activity, BarChart3 } from 'lucide-react'
-import { mockDrones } from '../data/mockData'
 
-function parseCSV(text) {
-    const lines = text.trim().split('\n')
-    return lines.slice(1).map((line) => {
-        const vals = line.split(',')
-        return {
-            frame_index: parseInt(vals[0]),
-            headcount: parseInt(vals[1]),
-            headcount_density: parseFloat(vals[2]),
-        }
-    })
+function getVideoNameFromUrl(url) {
+    try {
+        const parsed = new URL(url)
+        return parsed.pathname.split('/').pop() || ''
+    } catch {
+        return (url || '').split('/').pop() || ''
+    }
 }
 
 function getHeatColor(value, maxIntensity) {
@@ -40,37 +36,99 @@ function getHeatColor(value, maxIntensity) {
 }
 
 export default function DroneFeed() {
-    const [csvData, setCsvData] = useState([])
-    const [currentFrame, setCurrentFrame] = useState(0)
+    const [drones, setDrones] = useState([])
+    const [liveData, setLiveData] = useState({ points_count: 0, headcount: 0, timestamp: null })
+    const [streamMetricsByVideo, setStreamMetricsByVideo] = useState({})
+    const [frameIndex, setFrameIndex] = useState(0)
     const maxIntensity = 100
-    const liveDroneId = 'DRN-001'
+    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
 
     useEffect(() => {
-        fetch('/headcount_data.csv')
-            .then((res) => res.text())
-            .then((text) => setCsvData(parseCSV(text)))
-            .catch((err) => console.error('Failed to load CSV:', err))
+        const fetchDrones = async () => {
+            try {
+                const res = await fetch(`http://localhost:8000/api/drones/?include_debug=${debugPlayback}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    setDrones(data.drones || [])
+                }
+            } catch (err) {
+                console.error('Failed to load live streams:', err)
+            }
+        }
+
+        fetchDrones()
+        const interval = setInterval(fetchDrones, 1000)
+        return () => clearInterval(interval)
     }, [])
 
     useEffect(() => {
-        if (csvData.length === 0) return
-        const interval = setInterval(() => {
-            setCurrentFrame((prev) => (prev + 1) % csvData.length)
-        }, 200)
-        return () => clearInterval(interval)
-    }, [csvData.length])
+        const fetchDensity = async () => {
+            try {
+                const res = await fetch('http://localhost:8000/api/density/current')
+                if (res.ok) {
+                    const data = await res.json()
+                    const streams = data.active_streams || {}
+                    const byVideo = {}
+                    let totalPoints = 0
+                    let totalHeadcount = 0
 
-    const frameData = csvData[currentFrame] || { frame_index: 0, headcount: 0, headcount_density: 0 }
+                    Object.entries(streams).forEach(([source, stream]) => {
+                        const videoName = getVideoNameFromUrl(source)
+                        if (!videoName) return
+                        byVideo[videoName] = stream
+                        totalPoints += Number(stream?.points_count || 0)
+                        totalHeadcount += Number(stream?.headcount || 0)
+                    })
+
+                    setStreamMetricsByVideo(byVideo)
+                    setLiveData({
+                        points_count: totalPoints,
+                        headcount: totalHeadcount,
+                        timestamp: data.current_data?.timestamp || null,
+                    })
+                    setFrameIndex((prev) => prev + 1)
+                }
+            } catch (err) {
+                console.error('Failed to load live density:', err)
+            }
+        }
+
+        fetchDensity()
+        const interval = setInterval(() => {
+            fetchDensity()
+        }, 1000)
+        return () => clearInterval(interval)
+    }, [])
+
+    const frameData = {
+        frame_index: frameIndex,
+        headcount: liveData.points_count || 0,
+        headcount_density: liveData.headcount || 0,
+    }
 
     return (
         <>
             <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '20px' }}>
                 Live Drone Feeds
             </h2>
+            {drones.length === 0 && (
+                <div className="feed-card" style={{ padding: 16, marginBottom: 16 }}>
+                    No active live streams found. Start the stream processor to publish live data.
+                    {!debugPlayback && (
+                        <span style={{ display: 'block', marginTop: 8, color: '#94a3b8' }}>
+                            For quick UI debugging, open this page with <strong>?debugPlayback=1</strong>.
+                        </span>
+                    )}
+                </div>
+            )}
             <div className="feed-grid">
-                {mockDrones.map((drone) => {
-                    const isLive = drone.id === liveDroneId
-                    const headcount = isLive ? Math.round(frameData.headcount_density) : drone.peopleCounted
+                {drones.map((drone) => {
+                    const isLive = drone.status === 'active' || drone.status === 'debug'
+                    const streamMetrics = streamMetricsByVideo[getVideoNameFromUrl(drone.video_url)] || {}
+                    const dronePeakPoints = Number(streamMetrics.points_count ?? drone.peopleCounted ?? 0)
+                    const droneDensity = Number(streamMetrics.headcount ?? drone.headcountDensity ?? 0)
+                    const headcount = Math.round(dronePeakPoints)
+                    const loopVideo = streamMetrics.loop_video !== false
 
                     return (
                         <div key={drone.id} className="feed-card" id={`feed-${drone.id}`}>
@@ -81,15 +139,20 @@ export default function DroneFeed() {
                                         Live
                                     </div>
                                 )}
-                                {drone.status === 'active' ? (
+                                {drone.status === 'debug' && (
+                                    <div className="feed-live-badge" style={{ background: '#7c3aed', color: '#ede9fe' }}>
+                                        Debug Playback
+                                    </div>
+                                )}
+                                {(drone.status === 'active' || drone.status === 'debug') ? (
                                     <video
                                         className="feed-video-player"
                                         autoPlay
                                         muted
-                                        loop
+                                        loop={loopVideo}
                                         playsInline
                                     >
-                                        <source src="/droneVid.mp4" type="video/mp4" />
+                                        <source src={drone.video_url} type="video/mp4" />
                                         Your browser does not support the video tag.
                                     </video>
                                 ) : (
@@ -112,12 +175,12 @@ export default function DroneFeed() {
                                 </div>
                                 <div className="feed-location">
                                     <MapPin size={12} style={{ display: 'inline', marginRight: 4 }} />
-                                    {drone.zone} · {drone.latitude.toFixed(4)}, {drone.longitude.toFixed(4)}
+                                    {drone.zone || 'Live Stream Zone'} · {Number(drone.latitude || 0).toFixed(4)}, {Number(drone.longitude || 0).toFixed(4)}
                                 </div>
                                 <div className="feed-meta">
                                     <div className="feed-meta-item">
                                         <Battery size={14} />
-                                        {drone.battery}%
+                                        {drone.battery ?? 100}%
                                     </div>
                                     <div className="feed-meta-item">
                                         <Users size={14} />
@@ -125,12 +188,11 @@ export default function DroneFeed() {
                                     </div>
                                 </div>
 
-                                {/* Live CSV Data for the live drone */}
-                                {isLive && csvData.length > 0 && (
+                                {isLive && (
                                     <div className="live-csv-panel" style={{ marginTop: 12 }}>
                                         <h4 style={{ fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--color-text-secondary)' }}>
                                             <BarChart3 size={13} />
-                                            Detection Data — Frame {frameData.frame_index}
+                                            Detection Data — Frame {frameData.frame_index || 0}
                                         </h4>
                                         <div className="csv-data-grid">
                                             <div className="csv-stat">
@@ -139,18 +201,18 @@ export default function DroneFeed() {
                                             </div>
                                             <div className="csv-stat">
                                                 <span className="csv-stat-label">Peak Pts</span>
-                                                <span className="csv-stat-value" style={{ fontSize: 15 }}>{frameData.headcount}</span>
+                                                <span className="csv-stat-value" style={{ fontSize: 15 }}>{dronePeakPoints}</span>
                                             </div>
                                             <div className="csv-stat">
                                                 <span className="csv-stat-label">Density</span>
-                                                <span className="csv-stat-value" style={{ fontSize: 15, color: getHeatColor(frameData.headcount_density, maxIntensity) }}>
-                                                    {frameData.headcount_density.toFixed(1)}
+                                                <span className="csv-stat-value" style={{ fontSize: 15, color: getHeatColor(droneDensity, maxIntensity) }}>
+                                                    {Number(droneDensity || 0).toFixed(1)}
                                                 </span>
                                             </div>
                                             <div className="csv-stat">
                                                 <span className="csv-stat-label">Intensity</span>
                                                 <span className="csv-stat-value" style={{ fontSize: 15 }}>
-                                                    {(frameData.headcount_density / maxIntensity * 100).toFixed(0)}%
+                                                    {(Number(droneDensity || 0) / maxIntensity * 100).toFixed(0)}%
                                                 </span>
                                             </div>
                                         </div>

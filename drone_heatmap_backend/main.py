@@ -8,8 +8,16 @@ from detection import PersonDetector
 from transformation import CoordinateTransformer
 from heatmap import HeatmapGenerator
 
-def run_pipeline(video_path: str, metadata_path: str, output_path: str):
-    print(f"Starting heatmap pipeline for {video_path}")
+def run_pipeline(
+    video_path: str,
+    metadata_path: str,
+    output_path: str,
+    model_type: str = "sdnet",
+    model_path: str | None = None,
+    device: str | None = None,
+    yolo_confidence: float = 0.35,
+):
+    print(f"Starting heatmap pipeline for {video_path} using model '{model_type}'")
     
     # 1. Setup Ingestion
     ingestor = VideoIngestor(video_path)
@@ -43,8 +51,8 @@ def run_pipeline(video_path: str, metadata_path: str, output_path: str):
         return static_meta
 
     # 2. Setup Modules
-    detector = PersonDetector()  # Auto-detects SDNet weights
-    
+    detector = PersonDetector(model_type=model_type, model_path=model_path, device=device, confidence=yolo_confidence)
+
     # Initial transformer (will be updated per-frame if metadata is dynamic)
     init_meta = get_frame_meta(0)
     transformer = CoordinateTransformer(
@@ -116,11 +124,23 @@ def run_pipeline(video_path: str, metadata_path: str, output_path: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Drone Video Heatmap Generator (SDNet)")
+    parser = argparse.ArgumentParser(description="Drone Video Heatmap Generator")
     parser.add_argument("--video", type=str, required=True, help="Path to input drone video")
     parser.add_argument("--meta", type=str, required=False, default="dronetest_meta.json", help="Path to drone metadata JSON")
     parser.add_argument("--output", type=str, default="output_heatmap.mp4", help="Path to save output video")
-    
+    parser.add_argument("--model", type=str, default="sdnet", choices=["sdnet", "yolo"], help="Detector type for crowd density estimation")
+    parser.add_argument("--model-path", type=str, default=None, help="Optional path to model weights")
+    parser.add_argument("--device", type=str, default=None, help="Computation device: cuda or cpu")
+    parser.add_argument("--yolo-confidence", type=float, default=0.35, help="YOLO confidence threshold")
+
     args = parser.parse_args()
-    
-    run_pipeline(args.video, args.meta, args.output)
+
+    run_pipeline(
+        args.video,
+        args.meta,
+        args.output,
+        model_type=args.model,
+        model_path=args.model_path,
+        device=args.device,
+        yolo_confidence=args.yolo_confidence,
+    )
