@@ -32,3 +32,13 @@ MAX_DETECTIONS = 1000  # Cap on points per frame
 # Logging
 VERBOSE = False  # Set to False for silent mode
 PRINT_INTERVAL = 10  # Print stats every N frames
+
+# Live Stream Reconnection (applies when source is a URL, e.g. rtsp://)
+# Seconds to wait between reconnection attempts (doubles each attempt up to MAX_RECONNECT_DELAY_SECONDS)
+RECONNECT_DELAY_SECONDS = 3
+MAX_RECONNECT_DELAY_SECONDS = 30
+# 0 = retry indefinitely; set to a positive integer to cap attempts before giving up
+MAX_RECONNECT_ATTEMPTS = 0
+
+# URL schemes that indicate a live network stream (not a local file)
+LIVE_URL_SCHEMES = {"rtsp", "rtsps", "rtmp", "rtmps", "http", "https"}

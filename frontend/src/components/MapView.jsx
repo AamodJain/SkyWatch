@@ -2,8 +2,36 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapContainer, TileLayer, Circle, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { X, Video, BarChart3, SlidersHorizontal } from 'lucide-react'
+import { X, Video, BarChart3, SlidersHorizontal, Radio } from 'lucide-react'
 import { useNotification } from '../context/NotificationContext'
+import HlsPlayer from './HlsPlayer'
+
+/**
+ * Returns true for protocols browsers cannot play natively (RTSP, RTMP …).
+ * HTTP/HTTPS streams (MJPEG, HLS) are left for the <video> tag.
+ */
+function isNonPlayableUrl(url) {
+    if (!url) return false
+    try {
+        const scheme = new URL(url).protocol.replace(':', '').toLowerCase()
+        return ['rtsp', 'rtsps', 'rtmp', 'rtmps'].includes(scheme)
+    } catch {
+        return false
+    }
+}
+
+/**
+ * Returns true when an HTTP/HTTPS URL points to an HLS playlist (.m3u8).
+ * Chrome cannot play these natively — they need hls.js.
+ */
+function isHlsUrl(url) {
+    if (!url) return false
+    try {
+        return new URL(url).pathname.toLowerCase().endsWith('.m3u8')
+    } catch {
+        return url.toLowerCase().includes('.m3u8')
+    }
+}
 
 // Fix default marker icon
 delete L.Icon.Default.prototype._getIconUrl
@@ -573,16 +601,45 @@ export default function MapView({
                                     </div>
                                 )}
                                 {(selectedDrone.status === 'active' || selectedDrone.status === 'debug') ? (
-                                    <video
-                                        className="feed-video-player"
-                                        autoPlay
-                                        muted
-                                        loop={loopVideo}
-                                        playsInline
-                                    >
-                                        <source src={selectedDrone.video_url} type="video/mp4" />
-                                        Your browser does not support the video tag.
-                                    </video>
+                                    // Priority 1: backend provided an HLS URL (RTSP/RTMP via MediaMTX)
+                                    selectedDrone.hls_url ? (
+                                        <HlsPlayer
+                                            src={selectedDrone.hls_url}
+                                            className="feed-video-player"
+                                        />
+                                    // Priority 2: source is itself an HLS playlist (HTTP .m3u8)
+                                    ) : isHlsUrl(selectedDrone.video_url) ? (
+                                        <HlsPlayer
+                                            src={selectedDrone.video_url}
+                                            className="feed-video-player"
+                                        />
+                                    // Priority 3: non-playable protocol (RTMP without MediaMTX, etc.)
+                                    ) : isNonPlayableUrl(selectedDrone.video_url) ? (
+                                        <div className="feed-video-placeholder" style={{ gap: 10, padding: '20px 12px', fontSize: 12 }}>
+                                            <Radio size={36} style={{ color: '#10b981' }} />
+                                            <span style={{ fontWeight: 700, color: '#e2e8f0' }}>
+                                                {selectedDrone.name} — Live Stream
+                                            </span>
+                                            <span style={{ color: '#64748b', wordBreak: 'break-all', maxWidth: 260, textAlign: 'center' }}>
+                                                {selectedDrone.video_url}
+                                            </span>
+                                            <span style={{ color: '#94a3b8' }}>
+                                                This stream protocol cannot be played in the browser.
+                                            </span>
+                                        </div>
+                                    // Priority 4: local file or HTTP MJPEG — try native <video>
+                                    ) : (
+                                        <video
+                                            className="feed-video-player"
+                                            autoPlay
+                                            muted
+                                            loop={loopVideo}
+                                            playsInline
+                                        >
+                                            <source src={selectedDrone.video_url} type="video/mp4" />
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    )
                                 ) : (
                                     <div className="feed-video-placeholder">
                                         <Video size={48} />

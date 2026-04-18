@@ -116,6 +116,47 @@ python3 stream_processor.py \
 
 > Run one `stream_processor.py` per drone feed in separate terminals.
 
+### Live URL (RTSP / RTMP / HTTP) — real drone feed
+
+Just pass the live URL as `--source`. The processor automatically detects it is a network stream
+and enables auto-reconnect (no looping, infinite retries by default):
+
+```bash
+# RTSP from a DJI / Parrot-style drone
+python3 stream_processor.py \
+       --source rtsp://192.168.1.10:554/live \
+       --fps 5 \
+       --drone-id DRN-LIVE-01 \
+       --drone-name "DJI Mavic 3" \
+       --zone "Campus Perimeter" \
+       --latitude 30.9683 \
+       --longitude 76.4732 \
+       --altitude 80
+
+# RTMP stream
+python3 stream_processor.py \
+       --source rtmp://live.example.com/live/stream-key \
+       --fps 5 \
+       --drone-id DRN-RTMP-01 \
+       --drone-name "RTMP Drone" \
+       --latitude 28.6139 --longitude 77.2090 --altitude 100
+
+# HTTP MJPEG (some IP cameras / GCS software output this)
+python3 stream_processor.py \
+       --source http://192.168.1.20:8080/video \
+       --fps 5 \
+       --drone-id DRN-HTTP-01 \
+       --drone-name "IP-Cam Drone" \
+       --latitude 28.6139 --longitude 77.2090 --altitude 60
+```
+
+**Key differences vs local files:**
+- `--loop` is ignored for live URLs (always false).
+- The processor auto-reconnects with exponential back-off (3 s → 6 s → … → 30 s max) when the stream drops.
+- Use `--max-reconnect-attempts N` to cap retries (default: 0 = infinite).
+- RTSP/RTMP feeds show a "Live Stream Active" placeholder in the dashboard
+  (browsers cannot play these protocols natively); HTTP-MJPEG and HLS streams play inline.
+
 ---
 
 ## Typical Run Order

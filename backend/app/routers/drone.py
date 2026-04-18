@@ -9,6 +9,36 @@ router = APIRouter(prefix="/api/drones", tags=["drones"])
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm", ".m4v"}
 
+# URL schemes that are live network streams (not local file paths)
+_LIVE_SCHEMES = {"rtsp", "rtsps", "rtmp", "rtmps", "http", "https"}
+
+
+def _derive_mediamtx_hls_url(source_url: str) -> str | None:
+    """
+    Derive the MediaMTX HLS URL from any stream URL that MediaMTX can ingest.
+
+    MediaMTX accepts RTSP, RTSPS, RTMP and RTMPS as inputs and re-publishes
+    every stream as an HLS playlist on its built-in HTTP server (default port 8888).
+    The stream *path* is the same regardless of the ingest protocol:
+
+        rtsp://localhost:8554/mystream   → http://localhost:8888/mystream/index.m3u8
+        rtmp://localhost:1935/live/key   → http://localhost:8888/live/key/index.m3u8
+        rtsps://host:8322/cam1          → http://host:8888/cam1/index.m3u8
+
+    Returns None for protocols MediaMTX doesn't ingest (e.g. plain HTTP MJPEG).
+    """
+    try:
+        parsed = urlparse(source_url)
+        if parsed.scheme.lower() not in ("rtsp", "rtsps", "rtmp", "rtmps"):
+            return None
+        host = parsed.hostname or "localhost"
+        stream_path = parsed.path.lstrip("/")
+        if not stream_path:
+            return None
+        return f"http://{host}:{settings.MEDIAMTX_HLS_PORT}/{stream_path}/index.m3u8"
+    except Exception:
+        return None
+
 
 def _list_video_files() -> list[Path]:
     video_dir = Path(settings.MEDIA_VIDEOS_DIR)
@@ -21,7 +51,7 @@ def _list_video_files() -> list[Path]:
 
 
 def _get_active_sources() -> set[str]:
-    """Extract all active source video names from concurrent streams."""
+    """Return the video *filenames* of all currently-active file-based streams."""
     active_names = set()
     now = time.time()
     for source, stream_data in active_streams.items():
@@ -29,13 +59,16 @@ def _get_active_sources() -> set[str]:
         if ts is None or (now - float(ts)) > settings.STREAM_STALE_SECONDS:
             continue
         parsed = urlparse(source)
+        # Only count file-backed sources here
+        if parsed.scheme.lower() in _LIVE_SCHEMES:
+            continue
         video_name = Path(parsed.path if parsed.scheme else source).name
         active_names.add(video_name)
     return active_names
 
 
 def _get_stream_data_for_source(source_name: str) -> dict:
-    """Get the stream data for a specific source video name."""
+    """Get stream data for a specific local video filename."""
     now = time.time()
     for source_url, stream_data in active_streams.items():
         ts = stream_data.get("timestamp")
@@ -48,21 +81,82 @@ def _get_stream_data_for_source(source_name: str) -> dict:
     return None
 
 
+def _build_url_stream_drones(file_video_names: set[str]) -> list[dict]:
+    """
+    Build drone cards for active streams whose source is a live URL
+    (RTSP, RTMP, HTTP …) rather than a local video file.  These drones
+    don't appear in media/videos/ so they must be enumerated separately.
+    """
+    now = time.time()
+    drones = []
+    seen_ids: set[str] = set()
+
+    for source_url, stream_data in active_streams.items():
+        ts = stream_data.get("timestamp")
+        if ts is None or (now - float(ts)) > settings.STREAM_STALE_SECONDS:
+            continue
+
+        parsed = urlparse(source_url)
+        scheme = parsed.scheme.lower()
+
+        # Only handle live URL sources in this function
+        if scheme not in _LIVE_SCHEMES:
+            continue
+
+        # Skip if this URL happens to share a filename with a local file
+        # (unlikely, but guard against double-counting)
+        url_path_name = Path(parsed.path).name
+        if url_path_name and url_path_name in file_video_names:
+            continue
+
+        drone_id = stream_data.get("drone_id") or f"LIVE-{abs(hash(source_url)) % 10000:04d}"
+
+        # De-duplicate in case the same drone_id appears for multiple source variants
+        if drone_id in seen_ids:
+            continue
+        seen_ids.add(drone_id)
+
+        drones.append(
+            {
+                "id": drone_id,
+                "name": stream_data.get("drone_name") or drone_id,
+                "status": "active",
+                "latitude": float(stream_data.get("latitude") or 0.0),
+                "longitude": float(stream_data.get("longitude") or 0.0),
+                "altitude": float(stream_data.get("altitude") or 100.0),
+                "battery": 100,
+                "peopleCounted": int(stream_data.get("points_count") or 0),
+                "headcountDensity": float(stream_data.get("headcount") or 0.0),
+                "zone": stream_data.get("zone") or "Live Stream Zone",
+                # For URL streams the video_url IS the source URL.
+                # The frontend will use this to decide display behaviour.
+                "video_url": source_url,
+                # hls_url: browser-playable HLS playlist derived via MediaMTX.
+                # Set for RTSP, RTSPS, RTMP and RTMPS sources; None otherwise.
+                "hls_url": _derive_mediamtx_hls_url(source_url),
+                # Expose the raw protocol so the UI can choose the right player
+                "stream_protocol": scheme,
+            }
+        )
+
+    return drones
+
+
 def _build_drones_payload() -> list[dict]:
     files = _list_video_files()
+    file_video_names = {v.name for v in files}
     active_source_names = _get_active_sources()
-    
-    base_lat, base_lng = 28.6139, 77.2090
-    drones = []
 
+    base_lat, base_lng = 28.6139, 77.2090
+    drones: list[dict] = []
+
+    # ── 1. File-backed drones (media/videos/) ──────────────────────────
     for idx, video in enumerate(files):
         is_active = video.name in active_source_names
-        
-        # Get stream-specific data if active
+
         stream_data = _get_stream_data_for_source(video.name) if is_active else None
-        
+
         if is_active and stream_data:
-            # Use data from the specific stream
             points = int(stream_data.get("points_count") or 0)
             density = float(stream_data.get("headcount") or 0.0)
             drone_id = stream_data.get("drone_id") or f"DRN-{idx + 1:03d}"
@@ -72,7 +166,6 @@ def _build_drones_payload() -> list[dict]:
             lng = float(stream_data.get("longitude") or base_lng + (idx * 0.003))
             altitude = float(stream_data.get("altitude") or 100)
         else:
-            # Default values for inactive drones
             points = 0
             density = 0.0
             drone_id = f"DRN-{idx + 1:03d}"
@@ -95,8 +188,12 @@ def _build_drones_payload() -> list[dict]:
                 "headcountDensity": density,
                 "zone": zone,
                 "video_url": f"http://localhost:{settings.API_PORT}/videos/{video.name}",
+                "stream_protocol": "file",
             }
         )
+
+    # ── 2. Live URL-stream drones (RTSP / RTMP / HTTP …) ───────────────
+    drones.extend(_build_url_stream_drones(file_video_names))
 
     return drones
 
@@ -105,7 +202,7 @@ def _is_live_stream_active() -> bool:
     """Check if any stream is currently active."""
     if not active_streams:
         return False
-    
+
     now = time.time()
     for stream_data in active_streams.values():
         ts = stream_data.get("timestamp")
@@ -116,9 +213,9 @@ def _is_live_stream_active() -> bool:
 
 @router.get("/")
 async def get_drones(include_debug: bool = False):
-    """Get active drones only when live stream processor is pushing data.
+    """Get active drones — both file-backed and live URL streams.
 
-    Set include_debug=true to expose file-playback streams for UI debugging.
+    Set include_debug=true to also expose idle file-playback drones for UI debugging.
     """
     live_active = _is_live_stream_active()
     debug_mode = include_debug or settings.ALLOW_DEBUG_PLAYBACK
@@ -146,7 +243,7 @@ async def get_drones(include_debug: bool = False):
 
 @router.get("/videos")
 async def get_videos(include_debug: bool = False):
-    """Get list of currently served video files."""
+    """Get list of currently served local video files."""
     live_active = _is_live_stream_active()
     debug_mode = include_debug or settings.ALLOW_DEBUG_PLAYBACK
     if not live_active and not debug_mode:
@@ -177,4 +274,9 @@ async def get_drone_feed(drone_id: str):
     drone = next((d for d in drones if d["id"] == drone_id), None)
     if drone is None:
         return {"drone_id": drone_id, "feed_url": None, "status": "offline"}
-    return {"drone_id": drone_id, "feed_url": drone["video_url"], "status": drone["status"]}
+    return {
+        "drone_id": drone_id,
+        "feed_url": drone["video_url"],
+        "status": drone["status"],
+        "stream_protocol": drone.get("stream_protocol", "file"),
+    }
