@@ -5,6 +5,7 @@ import { NotificationProvider } from './context/NotificationContext'
 import Dashboard from './pages/Dashboard'
 import DroneFeed from './pages/DroneFeed'
 import Analytics from './pages/Analytics'
+import About from './pages/About'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/feeds" element={<DroneFeed />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/about" element={<About />} />
             </Routes>
           </div>
         </div>

@@ -5,12 +5,14 @@ import {
     BarChart3,
     Radio,
     Shield,
+    Info,
 } from 'lucide-react'
 
 const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/feeds', label: 'Live Feeds', icon: Video },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
+    { path: '/about', label: 'About', icon: Info },
 ]
 
 export default function Sidebar() {
