@@ -14,6 +14,9 @@
   --color-text-secondary: #94a3b8;
   --color-text-muted: #64748b;
 
+  --logo-filter: brightness(0) invert(1);
+  --map-filter: none;
+
   --color-accent-blue: #3b82f6;
   --color-accent-cyan: #06b6d4;
   --color-accent-purple: #8b5cf6;
@@ -43,6 +46,30 @@
   --navbar-height: 64px;
 }
 
+/* ===== Light Mode Properties ===== */
+body.light-mode {
+  --color-bg-primary: #f8fafc;
+  --color-bg-secondary: #f1f5f9;
+  --color-bg-card: #ffffff;
+  --color-bg-card-hover: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-border-light: #cbd5e1;
+
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+
+  --logo-filter: none;
+  --map-filter: none;
+
+  --gradient-card: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  --gradient-sidebar: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(59, 130, 246, 0.2);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
 /* ===== Reset & Base Styles ===== */
 *,
 *::before,
@@ -53,7 +80,7 @@
 }
 
 html {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   scroll-behavior: smooth;
 }
 
@@ -160,14 +187,14 @@ a {
 }
 
 .sidebar-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--color-text-primary);
   white-space: nowrap;
 }
 
 .sidebar-subtitle {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 500;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -183,7 +210,7 @@ a {
 }
 
 .sidebar-section-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -198,7 +225,7 @@ a {
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 500;
   transition: all var(--transition-fast);
   cursor: pointer;
@@ -269,7 +296,7 @@ a {
 }
 
 .status-text {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 500;
   color: var(--color-accent-green);
 }
@@ -277,7 +304,7 @@ a {
 /* ===== Navbar ===== */
 .navbar {
   height: var(--navbar-height);
-  background: rgba(10, 14, 26, 0.8);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
   display: flex;
@@ -296,12 +323,12 @@ a {
 }
 
 .navbar-title {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   font-weight: 600;
 }
 
 .navbar-breadcrumb {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   color: var(--color-text-muted);
 }
 
@@ -312,7 +339,7 @@ a {
 }
 
 .navbar-time {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 500;
   color: var(--color-text-secondary);
   font-variant-numeric: tabular-nums;
@@ -367,7 +394,7 @@ a {
   backdrop-filter: blur(8px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 12px 16px;
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
@@ -413,8 +440,8 @@ a {
 }
 
 .stat-card-icon {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -442,7 +469,7 @@ a {
 }
 
 .stat-card-trend {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 50px;
@@ -459,14 +486,14 @@ a {
 }
 
 .stat-card-value {
-  font-size: 28px;
+  font-size: calc(20px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1;
   margin-bottom: 4px;
 }
 
 .stat-card-label {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   color: var(--color-text-muted);
   font-weight: 500;
 }
@@ -496,12 +523,12 @@ a {
 }
 
 .map-header-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 600;
 }
 
 .map-header-subtitle {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-muted);
   margin-top: 2px;
 }
@@ -513,7 +540,7 @@ a {
 
 .map-control-btn {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 500;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
@@ -531,7 +558,8 @@ a {
 }
 
 .leaflet-map {
-  height: 480px;
+  height: 65vh;
+  min-height: 480px;
   width: 100%;
 }
 
@@ -548,7 +576,7 @@ a {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-secondary);
 }
 
@@ -565,7 +593,7 @@ a {
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  max-height: calc(480px + 90px);
+  max-height: calc(65vh + 90px);
 }
 
 .drones-panel-header {
@@ -577,12 +605,12 @@ a {
 }
 
 .drones-panel-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 600;
 }
 
 .drones-count {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   padding: 2px 10px;
   background: rgba(59, 130, 246, 0.12);
   color: var(--color-accent-blue);
@@ -638,7 +666,7 @@ a {
 }
 
 .drone-name {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -646,7 +674,7 @@ a {
 }
 
 .drone-status-badge {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 50px;
@@ -686,13 +714,13 @@ a {
 }
 
 .drone-stat-value {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .drone-stat-label {
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--color-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -743,7 +771,7 @@ a {
 }
 
 .feed-video-placeholder span {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 500;
 }
 
@@ -757,7 +785,7 @@ a {
   padding: 4px 10px;
   background: rgba(239, 68, 68, 0.9);
   border-radius: 50px;
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 700;
   color: white;
   text-transform: uppercase;
@@ -784,12 +812,12 @@ a {
 }
 
 .feed-drone-name {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 600;
 }
 
 .feed-location {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-muted);
 }
 
@@ -803,7 +831,7 @@ a {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-secondary);
 }
 
@@ -826,13 +854,13 @@ a {
 }
 
 .chart-title {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 600;
   margin-bottom: 4px;
 }
 
 .chart-subtitle {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-muted);
   margin-bottom: 20px;
 }
@@ -865,7 +893,7 @@ a {
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -887,7 +915,7 @@ a {
   background: var(--color-bg-secondary);
   color: var(--color-text-primary);
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   padding: 8px 10px;
   outline: none;
 }
@@ -905,9 +933,9 @@ a {
   justify-content: center;
   text-align: center;
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   padding: 8px;
-  background: rgba(10, 14, 26, 0.4);
+  background: transparent;
   border-radius: var(--radius-sm);
 }
 
@@ -917,7 +945,7 @@ a {
 }
 
 .leaflet-tile-pane {
-  filter: brightness(0.65) contrast(1.2) saturate(0.6);
+  filter: var(--map-filter);
 }
 
 .leaflet-control-zoom {
@@ -934,6 +962,23 @@ a {
 
 .leaflet-control-zoom a:hover {
   background: var(--color-bg-card-hover) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: var(--color-bg-card) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--glass-shadow);
+}
+
+.leaflet-popup-content {
+  color: var(--color-text-primary) !important;
+}
+
+.leaflet-popup-tip {
+  background: var(--color-bg-card) !important;
+  border: 1px solid var(--color-border);
 }
 
 /* ===== Responsive ===== */
@@ -974,7 +1019,8 @@ a {
 }
 
 .drone-feed-modal {
-  background: linear-gradient(145deg, rgba(26, 31, 54, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%);
+  background: var(--gradient-card);
+  color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   max-width: 600px;
@@ -1005,7 +1051,7 @@ a {
 }
 
 .drone-feed-modal-header h3 {
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   font-weight: 600;
   margin: 0;
 }
@@ -1048,7 +1094,7 @@ a {
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-accent-green);
   z-index: 10;
@@ -1090,7 +1136,7 @@ a {
 }
 
 .feed-video-placeholder span {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   text-align: center;
 }
 
@@ -1120,7 +1166,7 @@ a {
   background: rgba(59, 130, 246, 0.05);
   border-left: 3px solid var(--color-accent-blue);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
 }
 
 .detail-item svg {
@@ -1174,7 +1220,7 @@ a {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-secondary);
   margin-bottom: 8px;
@@ -1183,7 +1229,7 @@ a {
 .intensity-value {
   margin-left: auto;
   color: var(--color-accent-blue);
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -1222,7 +1268,7 @@ a {
 .intensity-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   color: var(--color-text-muted);
   margin-top: 4px;
 }
@@ -1237,11 +1283,12 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(17, 24, 39, 0.92);
+  background: var(--color-bg-card);
   backdrop-filter: blur(12px);
   border: 1px solid var(--color-border);
   border-radius: 50px;
   padding: 8px 16px;
+  box-shadow: var(--glass-shadow);
 }
 
 .playback-btn {
@@ -1251,7 +1298,7 @@ a {
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
   color: var(--color-text-primary);
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1293,7 +1340,7 @@ a {
 }
 
 .frame-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-secondary);
   white-space: nowrap;
@@ -1322,7 +1369,7 @@ a {
 
 .csv-stat-label {
   display: block;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.8px;
   color: var(--color-text-muted);
@@ -1332,7 +1379,7 @@ a {
 
 .csv-stat-value {
   display: block;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   font-weight: 700;
   color: var(--color-text-primary);
   font-variant-numeric: tabular-nums;
@@ -1373,7 +1420,7 @@ a {
   right: -4px;
   background: var(--color-accent-red);
   color: white;
-  font-size: 10px;
+  font-size: calc(10px * var(--text-scale, 1));
   font-weight: 800;
   padding: 2px 5px;
   border-radius: 10px;
@@ -1419,7 +1466,7 @@ a {
 }
 
 .notification-header h3 {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -1427,7 +1474,7 @@ a {
 .mark-all-read {
   background: none;
   border: none;
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-accent-blue);
   cursor: pointer;
   font-weight: 500;
@@ -1455,7 +1502,7 @@ a {
 }
 
 .notification-empty p {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 500;
 }
 
@@ -1517,19 +1564,19 @@ a {
 }
 
 .notification-title {
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .notification-message {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-secondary);
   line-height: 1.4;
 }
 
 .notification-time {
-  font-size: 11px;
+  font-size: calc(11px * var(--text-scale, 1));
   color: var(--color-text-muted);
   margin-top: 4px;
 }
@@ -1610,13 +1657,13 @@ a {
 }
 
 .toast-title {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
 }
 
 .toast-message {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-secondary);
   line-height: 1.4;
 }
@@ -1641,7 +1688,7 @@ a {
 
 /* ===== About Page ===== */
 .about-page {
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -1664,7 +1711,7 @@ a {
 }
 
 .about-header h1 {
-  font-size: 36px;
+  font-size: calc(36px * var(--text-scale, 1));
   font-weight: 700;
   margin-bottom: 8px;
   background: var(--gradient-primary);
@@ -1674,7 +1721,7 @@ a {
 }
 
 .about-subtitle {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   color: var(--color-text-secondary);
   font-weight: 500;
 }
@@ -1700,7 +1747,7 @@ a {
 }
 
 .section-header h2 {
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
 }
@@ -1720,7 +1767,7 @@ a {
 }
 
 .usage-guide h3 {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
   margin: 24px 0 12px 0;
@@ -1760,7 +1807,7 @@ a {
 }
 
 .contributors-group h3 {
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: 16px;
@@ -1788,7 +1835,7 @@ a {
 }
 
 .contributor-role {
-  font-size: 12px;
+  font-size: calc(12px * var(--text-scale, 1));
   color: var(--color-text-muted);
   font-weight: 400;
 }

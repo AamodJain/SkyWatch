@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import {
     LayoutDashboard,
     Video,
@@ -6,6 +7,7 @@ import {
     Radio,
     Shield,
     Info,
+    WifiOff,
 } from 'lucide-react'
 
 const navItems = [
@@ -17,6 +19,25 @@ const navItems = [
 
 export default function Sidebar() {
     const location = useLocation()
+    const [isOnline, setIsOnline] = useState(true)
+
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                // simple quick request to check if backend is alive
+                const res = await fetch('http://localhost:8000/api/drones/', {
+                    method: 'GET',
+                })
+                setIsOnline(res.ok)
+            } catch (error) {
+                setIsOnline(false)
+            }
+        }
+        
+        checkStatus()
+        const interval = setInterval(checkStatus, 3000)
+        return () => clearInterval(interval)
+    }, [])
 
     return (
         <aside className="sidebar">
@@ -48,10 +69,12 @@ export default function Sidebar() {
             </nav>
 
             <div className="sidebar-footer">
-                <div className="sidebar-status">
-                    <div className="status-dot" />
-                    <Radio size={14} />
-                    <span className="status-text">System Online</span>
+                <div className="sidebar-status" style={!isOnline ? { background: 'rgba(239, 68, 68, 0.08)', borderColor: 'rgba(239, 68, 68, 0.2)' } : {}}>
+                    <div className="status-dot" style={!isOnline ? { background: '#ef4444', animation: 'none' } : {}} />
+                    {isOnline ? <Radio size={14} style={{ color: '#10b981' }} /> : <WifiOff size={14} style={{ color: '#ef4444' }} />}
+                    <span className="status-text" style={!isOnline ? { color: '#ef4444' } : {}}>
+                        {isOnline ? 'System Online' : 'System Offline'}
+                    </span>
                 </div>
             </div>
         </aside>

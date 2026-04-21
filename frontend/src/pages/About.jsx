@@ -1,14 +1,16 @@
-import { Shield, Users, BookOpen, Github } from 'lucide-react'
+import { Shield, BookOpen, Github, Users } from 'lucide-react'
+import iitRoparLogo from '../assets/iit-ropar.svg'
 
 export default function About() {
     return (
         <div className="about-page">
             <div className="about-header">
-                <div className="about-logo">
-                    <Shield size={48} />
+                <div className="about-logo" style={{ background: 'transparent' }}>
+                    <img src={iitRoparLogo} alt="IIT Ropar Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
                 </div>
                 <h1>SkyWatch</h1>
                 <p className="about-subtitle">Drone Surveillance Portal</p>
+                <p style={{ color: 'var(--color-text-secondary)', marginTop: '8px', fontSize: '14px', fontWeight: '500' }}>Indian Institute of Technology (IIT) Ropar</p>
             </div>
 
             <div className="about-content">
@@ -32,7 +34,7 @@ export default function About() {
                 <section className="about-section">
                     <div className="section-header">
                         <Users size={24} />
-                        <h2>How to Use SkyWatch</h2>
+                        <h2>Manual: How to Use SkyWatch</h2>
                     </div>
                     <div className="usage-guide">
                         <h3>Getting Started</h3>
@@ -72,7 +74,33 @@ export default function About() {
                             <li><strong>Time Stamps:</strong> All information shows when it was recorded, so you know how current it is.</li>
                         </ul>
 
-                        <h3>Tips for Effective Use</h3>
+                        <div className="manual-legend-panel" style={{ marginTop: '24px', background: 'var(--color-bg-secondary)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                            <h4 style={{ marginBottom: '12px', fontSize: '15px', color: 'var(--color-text-primary)' }}>Crowd Level Color Legend</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="legend-dot" style={{ background: '#1565c0', width: '12px', height: '12px', borderRadius: '50%' }} />
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}><strong>Low (Blue)</strong> - Safe, minimal crowd</span>
+                                </div>
+                                <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="legend-dot" style={{ background: '#4caf50', width: '12px', height: '12px', borderRadius: '50%' }} />
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}><strong>Moderate (Green)</strong> - Normal crowd</span>
+                                </div>
+                                <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="legend-dot" style={{ background: '#ffeb3b', width: '12px', height: '12px', borderRadius: '50%' }} />
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}><strong>High (Yellow)</strong> - Dense crowd, monitor closely</span>
+                                </div>
+                                <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="legend-dot" style={{ background: '#ff9800', width: '12px', height: '12px', borderRadius: '50%' }} />
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}><strong>Very High (Orange)</strong> - Very dense, warning</span>
+                                </div>
+                                <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div className="legend-dot" style={{ background: '#f44336', width: '12px', height: '12px', borderRadius: '50%' }} />
+                                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}><strong>Critical (Red)</strong> - Exceeds expected limits, immediate attention needed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 style={{ marginTop: '24px' }}>Tips for Effective Use</h3>
                         <ul>
                             <li>Check the dashboard first to get an overview of all activity</li>
                             <li>Use the map to understand where drones are positioned</li>
@@ -90,7 +118,7 @@ export default function About() {
                     </div>
                     <div className="contributors-section">
                         <div className="contributors-group">
-                            <h3>Student Developers</h3>
+                            <h3>Developers</h3>
                             <div className="contributors-list">
                                 <div className="contributor">
                                     <span className="contributor-name">Aamod Jain</span>

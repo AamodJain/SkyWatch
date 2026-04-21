@@ -5,9 +5,10 @@ import 'leaflet.heat'
 import 'leaflet/dist/leaflet.css'
 import { DEFAULT_MAX_EXPECTED_PEOPLE, droneHubPosition, hotspotData } from './mapData'
 
-const DEFAULT_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+const CARTO_TILE_URL_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+const CARTO_TILE_URL_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
 const DEFAULT_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
 
 function configureDefaultMarkerIcons() {
   // Leaflet's default marker icon assets aren't always resolved by bundlers.
@@ -100,20 +101,33 @@ export function LeafletHeatmapMap({
   points = hotspotData,
   maxExpectedPeople = DEFAULT_MAX_EXPECTED_PEOPLE,
   scrollWheelZoom = true,
-  tileUrl = DEFAULT_TILE_URL,
+  tileUrl,
+  theme = 'light',
   attribution = DEFAULT_ATTRIBUTION,
   showHeatmap = true,
   showMarkers = true,
   showHubMarker = true,
 }) {
+  const resolvedTileUrl = tileUrl || (theme === 'light' ? CARTO_TILE_URL_LIGHT : CARTO_TILE_URL_DARK)
+
   return (
     <MapContainer
       center={center}
       zoom={zoom}
       scrollWheelZoom={scrollWheelZoom}
       className={className}
+      preferCanvas={true}
+      fadeAnimation={true}
+      maxZoom={18}
     >
-      <TileLayer attribution={attribution} url={tileUrl} />
+      <TileLayer
+        attribution={attribution}
+        url={resolvedTileUrl}
+        keepBuffer={8}
+        updateWhenZooming={false}
+        updateWhenIdle={true}
+        reuseTiles={true}
+      />
       {showHeatmap ? <HeatmapLayer points={points} maxExpectedPeople={maxExpectedPeople} /> : null}
 
       {showHubMarker ? (

@@ -123,7 +123,7 @@ export default function HlsPlayer({
                 <div style={overlayStyle}>
                     <Loader
                         size={36}
-                        style={{ color: '#10b981', animation: 'spin 1s linear infinite' }}
+                        style={{ color: 'var(--color-accent-green)', animation: 'spin 1s linear infinite' }}
                     />
                     <span style={labelStyle}>Connecting to live stream…</span>
                     <span style={subStyle}>{src}</span>
@@ -133,18 +133,18 @@ export default function HlsPlayer({
             {/* Error overlay with retry */}
             {status === 'error' && (
                 <div style={overlayStyle}>
-                    <Radio size={36} style={{ color: '#f59e0b' }} />
-                    <span style={{ ...labelStyle, color: '#fbbf24' }}>Stream unavailable</span>
+                    <Radio size={36} style={{ color: 'var(--color-accent-amber)' }} />
+                    <span style={{ ...labelStyle, color: 'var(--color-accent-amber)' }}>Stream unavailable</span>
                     <span style={subStyle}>{errorMsg}</span>
                     <button
                         onClick={initPlayer}
                         style={{
                             marginTop: 10,
                             padding: '6px 16px',
-                            background: '#1e293b',
-                            border: '1px solid #334155',
+                            background: 'var(--color-bg-card)',
+                            border: '1px solid var(--color-border)',
                             borderRadius: 6,
-                            color: '#94a3b8',
+                            color: 'var(--color-text-secondary)',
                             cursor: 'pointer',
                             fontSize: 12,
                             display: 'flex',
@@ -182,7 +182,7 @@ export default function HlsPlayer({
                             width: 7,
                             height: 7,
                             borderRadius: '50%',
-                            background: '#fff',
+                            background: 'var(--color-text-primary)',
                             animation: 'pulse 1.5s infinite',
                             display: 'inline-block',
                         }}
@@ -202,7 +202,7 @@ const overlayStyle = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#0f172a',
+    background: 'var(--color-bg-secondary)',
     gap: 8,
     padding: '16px 12px',
 }
@@ -210,13 +210,13 @@ const overlayStyle = {
 const labelStyle = {
     fontSize: 13,
     fontWeight: 700,
-    color: '#e2e8f0',
+    color: 'var(--color-text-primary)',
     textAlign: 'center',
 }
 
 const subStyle = {
     fontSize: 10,
-    color: '#475569',
+    color: 'var(--color-text-secondary)',
     wordBreak: 'break-all',
     maxWidth: 280,
     textAlign: 'center',

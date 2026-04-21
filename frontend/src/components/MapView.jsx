@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { X, Video, BarChart3, SlidersHorizontal, Radio } from 'lucide-react'
 import { useNotification } from '../context/NotificationContext'
+import { useSettings } from '../context/SettingsContext'
 import HlsPlayer from './HlsPlayer'
 
 /**
@@ -179,7 +180,7 @@ function HeatmapLayer({ data }) {
     return null
 }
 
-function MapFocusController({ targetDrone, focusRequestId }) {
+function MapFocusController({ targetDrone, focusRequestId, circleRefs }) {
     const map = useMap()
 
     useEffect(() => {
@@ -190,7 +191,16 @@ function MapFocusController({ targetDrone, focusRequestId }) {
         if (Number.isNaN(lat) || Number.isNaN(lng)) return
 
         map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 0.9 })
-    }, [map, focusRequestId, targetDrone?.id, targetDrone?.latitude, targetDrone?.longitude])
+
+        if (circleRefs?.current?.[targetDrone.id]) {
+            setTimeout(() => {
+                const circle = circleRefs.current[targetDrone.id]
+                if (circle && circle.openPopup) {
+                    circle.openPopup()
+                }
+            }, 300) // Small delay to let panning start
+        }
+    }, [map, focusRequestId, targetDrone?.id, targetDrone?.latitude, targetDrone?.longitude, circleRefs])
 
     return null
 }
@@ -201,11 +211,15 @@ export default function MapView({
     focusRequestId = 0,
     maxIntensityByDrone = {},
     setMaxIntensityByDrone = () => {},
+    selectedDrone = null,
+    setSelectedDrone = () => {},
 }) {
     const { processStreamData } = useNotification()
+    const { showLivePanelInfo, theme } = useSettings()
     const defaultCenter = [28.5900, 77.2200]
     const detailsPanelRef = useRef(null)
     const dragOffsetRef = useRef({ x: 0, y: 0 })
+    const circleRefs = useRef({})
     const [drones, setDrones] = useState([])
     const activeDrones = drones.filter((d) => d.status === 'active' || d.status === 'debug')
     const center = activeDrones.length > 0
@@ -221,19 +235,19 @@ export default function MapView({
         maxIntensityRef.current = maxIntensityByDrone
     }, [drones, maxIntensityByDrone])
 
-    const [selectedDrone, setSelectedDrone] = useState(null)
     const [liveData, setLiveData] = useState({ headcount: 0, headcount_density: 0, frame_index: 0 })
     const [streamMetricsByVideo, setStreamMetricsByVideo] = useState({})
-    const [showDensitySettings, setShowDensitySettings] = useState(false)
     const [isPlaying, setIsPlaying] = useState(true)
     const [loopVideo, setLoopVideo] = useState(true)
     const [isDraggingDetails, setIsDraggingDetails] = useState(false)
     const [detailsPanelPosition, setDetailsPanelPosition] = useState({ x: 18, y: 92 })
-    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
     const focusedDrone = useMemo(
         () => drones.find((d) => d.id === focusedDroneId) || null,
         [drones, focusedDroneId]
     )
+    const tileTheme = theme === 'light' ? 'light_all' : 'dark_all'
+    const mapTileUrl = `https://{s}.basemaps.cartocdn.com/${tileTheme}/{z}/{x}/{y}{r}.png`
 
     useEffect(() => {
         const fetchDrones = async () => {
@@ -411,21 +425,10 @@ export default function MapView({
                     <div className="map-header-title">Live Heatmap View</div>
                     <div className="map-header-subtitle">
                         Real-time crowd density overlay · {activeDrones.length} active drones
-                        <span style={{ marginLeft: 12, color: '#10b981' }}>
+                        <span style={{ marginLeft: 12, color: 'var(--color-accent-green)' }}>
                             · Live Frame {frameData.frame_index}
                         </span>
                     </div>
-                </div>
-                <div className="map-controls">
-                    <button className="map-control-btn active" id="heatmap-toggle">Heatmap</button>
-                    <button className="map-control-btn" id="satellite-toggle">Satellite</button>
-                    <button className="map-control-btn" id="markers-toggle">Markers</button>
-                    <button
-                        className="map-control-btn"
-                        onClick={() => setShowDensitySettings((prev) => !prev)}
-                    >
-                        Density Settings
-                    </button>
                 </div>
             </div>
 
@@ -435,15 +438,22 @@ export default function MapView({
                 className="leaflet-map"
                 zoomControl={true}
                 preferCanvas={true}
-                zoomAnimation={false}
-                fadeAnimation={false}
-                markerZoomAnimation={false}
+                fadeAnimation={true}
+                maxZoom={18}
+                zoomSnap={0.5}
+                zoomDelta={0.5}
+                wheelPxPerZoomLevel={60}
+                wheelDebounceTime={40}
             >
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url={mapTileUrl}
+                    keepBuffer={8}
+                    updateWhenZooming={false}
+                    updateWhenIdle={true}
+                    reuseTiles={true}
                 />
-                <MapFocusController targetDrone={focusedDrone} focusRequestId={focusRequestId} />
+                <MapFocusController targetDrone={focusedDrone} focusRequestId={focusRequestId} circleRefs={circleRefs} />
                 <HeatmapLayer data={dynamicHeatmapData} />
                 {activeDrones.map((drone) => {
                     const isLiveDrone = drone.status === 'active' || drone.status === 'debug'
@@ -462,6 +472,11 @@ export default function MapView({
                     return (
                         <Circle
                             key={drone.id}
+                            ref={(r) => {
+                                if (r) {
+                                    circleRefs.current[drone.id] = r
+                                }
+                            }}
                             center={[drone.latitude, drone.longitude]}
                             radius={footprintRadiusMeters}
                             pathOptions={{
@@ -474,14 +489,14 @@ export default function MapView({
                             }}
                         >
                             <Popup>
-                                <div style={{ color: '#1a1f36', fontSize: '13px', lineHeight: 1.6 }}>
+                                <div style={{ color: 'var(--color-text-primary)', fontSize: '13px', lineHeight: 1.6 }}>
                                     <strong>{drone.name}</strong> ({drone.id})<br />
                                     Zone: {drone.zone || 'Live Stream Zone'}<br />
                                     Altitude: {drone.altitude ?? 100}m<br />
                                     View Angle: {viewAngleDeg}°<br />
                                     Coverage Radius: {Math.round(footprintRadiusMeters)}m<br />
                                     People: {Math.round(headcount || 0)}<br />
-                                    Density: <strong style={{ color }}>{densityLabel}</strong><br />
+                                    Crowd Level: <strong style={{ color }}>{densityLabel}</strong><br />
                                     Battery: {drone.battery ?? 100}%
                                 </div>
                             </Popup>
@@ -490,96 +505,43 @@ export default function MapView({
                 })}
             </MapContainer>
 
-            {/* ─── Max Intensity Slider ─── */}
-            {showDensitySettings && (
-                <div className="intensity-slider-container">
-                    <div className="intensity-slider-header">
-                        <SlidersHorizontal size={14} />
-                        <span>
-                            Max Intensity{settingsDrone ? ` · ${settingsDrone.name}` : ''}
-                        </span>
-                        <span className="intensity-value">{settingsDroneLimit}</span>
-                    </div>
-                    <input
-                        type="range"
-                        min="10"
-                        max="500"
-                        value={settingsDroneLimit}
-                        onChange={(e) => {
-                            if (!settingsDrone?.id) return
-                            const nextVal = Number(e.target.value)
-                            setMaxIntensityByDrone((prev) => ({
-                                ...prev,
-                                [settingsDrone.id]: nextVal,
-                            }))
-                        }}
-                        className="intensity-slider"
-                        id="max-intensity-slider"
-                    />
-                    <div className="intensity-labels">
-                        <span>10</span>
-                        <span>500</span>
-                    </div>
-                </div>
-            )}
-
             {/* ─── Playback Controls ─── */}
             {/* ─── Live Data Badge ─── */}
             <div className="playback-controls">
                 <span className="frame-label">
-                    Live F{frameData.frame_index} | {Math.round(frameData.headcount_density)} total ppl
+                    Live F{frameData.frame_index} | {Math.round(frameData.headcount_density)} Estimated Crowd Count
                 </span>
             </div>
 
-            {/* ─── Legend ─── */}
-            <div className="map-legend">
-                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>Density:</span>
-                <div className="legend-item">
-                    <div className="legend-dot" style={{ background: '#1565c0' }} />
-                    Low
-                </div>
-                <div className="legend-item">
-                    <div className="legend-dot" style={{ background: '#4caf50' }} />
-                    Moderate
-                </div>
-                <div className="legend-item">
-                    <div className="legend-dot" style={{ background: '#ffeb3b' }} />
-                    High
-                </div>
-                <div className="legend-item">
-                    <div className="legend-dot" style={{ background: '#ff9800' }} />
-                    Very High
-                </div>
-                <div className="legend-item">
-                    <div className="legend-dot" style={{ background: '#f44336' }} />
-                    Critical
-                </div>
-            </div>
 
             {/* ─── Draggable Drone Details Panel ─── */}
             {selectedDrone && (
                 <div
                     ref={detailsPanelRef}
                     className="drone-feed-floating-panel"
-                    style={{ left: detailsPanelPosition.x, top: detailsPanelPosition.y }}
+                    style={{ left: `${detailsPanelPosition.x}px`, top: `${detailsPanelPosition.y}px` }}
                 >
                     <div className="drone-feed-modal">
-                        <div className="drone-feed-modal-header">
-                            <h3
-                                style={{ cursor: 'move', userSelect: 'none' }}
-                                onMouseDown={startDraggingDetails}
-                                title="Drag to move"
-                            >
+                        <div 
+                            className="drone-feed-modal-header"
+                            style={{ cursor: 'move', userSelect: 'none' }}
+                            onMouseDown={startDraggingDetails}
+                        >
+                            <h3 title="Drag to move">
                                 {selectedDrone.name} Live Feed
                             </h3>
                             <button
                                 className="drone-feed-modal-close"
-                                onClick={() => setSelectedDrone(null)}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setSelectedDrone(null)
+                                }}
                                 style={{
                                     background: 'none',
                                     border: 'none',
                                     cursor: 'pointer',
-                                    color: '#94a3b8',
+                                    color: 'var(--color-text-secondary)',
                                     fontSize: '20px',
                                     padding: '4px',
                                 }}
@@ -616,20 +578,21 @@ export default function MapView({
                                     // Priority 3: non-playable protocol (RTMP without MediaMTX, etc.)
                                     ) : isNonPlayableUrl(selectedDrone.video_url) ? (
                                         <div className="feed-video-placeholder" style={{ gap: 10, padding: '20px 12px', fontSize: 12 }}>
-                                            <Radio size={36} style={{ color: '#10b981' }} />
-                                            <span style={{ fontWeight: 700, color: '#e2e8f0' }}>
+                                            <Radio size={36} style={{ color: 'var(--color-accent-green)' }} />
+                                            <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>
                                                 {selectedDrone.name} — Live Stream
                                             </span>
-                                            <span style={{ color: '#64748b', wordBreak: 'break-all', maxWidth: 260, textAlign: 'center' }}>
+                                            <span style={{ color: 'var(--color-text-muted)', wordBreak: 'break-all', maxWidth: 260, textAlign: 'center' }}>
                                                 {selectedDrone.video_url}
                                             </span>
-                                            <span style={{ color: '#94a3b8' }}>
+                                            <span style={{ color: 'var(--color-text-secondary)' }}>
                                                 This stream protocol cannot be played in the browser.
                                             </span>
                                         </div>
                                     // Priority 4: local file or HTTP MJPEG — try native <video>
                                     ) : (
                                         <video
+                                            key={selectedDrone.video_url}
                                             className="feed-video-player"
                                             autoPlay
                                             muted
@@ -698,9 +661,39 @@ export default function MapView({
                                     </div>
                                 )}
 
-                                {selectedDrone.status !== 'active' && (
+                                {/* ─── Drone Metadata Panel ─── */}
+                                {showLivePanelInfo && selectedDrone && (
+                                    <div className="live-metadata-panel" style={{ marginTop: '16px', background: 'var(--color-bg-secondary)', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                        <h4 style={{ marginBottom: '10px', fontSize: '13px', fontWeight: 600 }}>Drone Metadata</h4>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: 'var(--color-text-primary)' }}>
+                                            <div><strong style={{ color: 'var(--color-text-secondary)' }}>Zone:</strong> {selectedDrone.zone || 'Unknown'}</div>
+                                            <div><strong style={{ color: 'var(--color-text-secondary)' }}>Altitude:</strong> {selectedDrone.altitude}m</div>
+                                            <div><strong style={{ color: 'var(--color-text-secondary)' }}>View Angle:</strong> {selectedDrone.viewAngle || 60}°</div>
+                                            <div><strong style={{ color: 'var(--color-text-secondary)' }}>Coverage Radius:</strong> {selectedDrone.coverageRadius || 50}m</div>
+                                            <div><strong style={{ color: 'var(--color-text-secondary)' }}>People:</strong> {Number(selectedDroneMetrics?.headcount ?? selectedDrone.headcountDensity ?? 0).toFixed(0)}</div>
+                                            <div>
+                                                <strong style={{ color: 'var(--color-text-secondary)' }}>Crowd Level:</strong>{' '}
+                                                <span style={{ 
+                                                    color: getHeatColor(
+                                                        Number(selectedDroneMetrics?.headcount ?? selectedDrone.headcountDensity ?? 0),
+                                                        getDroneMaxIntensity(selectedDrone)
+                                                    ),
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {getDensityLabel(
+                                                        Number(selectedDroneMetrics?.headcount ?? selectedDrone.headcountDensity ?? 0),
+                                                        getDroneMaxIntensity(selectedDrone)
+                                                    )}
+                                                </span>
+                                            </div>
+                                            <div><strong style={{ color: 'var(--color-text-secondary)' }}>Battery:</strong> {selectedDrone.battery}%</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedDrone.status !== 'active' && !showLivePanelInfo && (
                                     <div className="detail-item">
-                                        <span style={{ color: '#94a3b8' }}>
+                                        <span style={{ color: 'var(--color-text-secondary)' }}>
                                             Detailed metadata is available in the map popup.
                                         </span>
                                     </div>

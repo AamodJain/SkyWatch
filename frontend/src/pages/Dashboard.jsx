@@ -4,10 +4,23 @@ import DensityStats from '../components/DensityStats'
 import DroneCard from '../components/DroneCard'
 
 export default function Dashboard() {
-    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
     const [drones, setDrones] = useState([])
     const [focusedDroneId, setFocusedDroneId] = useState(null)
     const [focusRequestId, setFocusRequestId] = useState(0)
+    const [selectedDrone, setSelectedDrone] = useState(null)
+    const [autoViewDrones, setAutoViewDrones] = useState(() => {
+        try {
+            const raw = localStorage.getItem('autoViewDrones')
+            if (!raw) return {}
+            const parsed = JSON.parse(raw)
+            return parsed && typeof parsed === 'object' ? parsed : {}
+        } catch {
+            return {}
+        }
+    })
+    const [filterName, setFilterName] = useState('')
+    const [filterRegion, setFilterRegion] = useState('')
     const [maxIntensityByDrone, setMaxIntensityByDrone] = useState(() => {
         try {
             const raw = localStorage.getItem('maxIntensityByDrone')
@@ -28,6 +41,14 @@ export default function Dashboard() {
             // Ignore storage failures.
         }
     }, [maxIntensityByDrone])
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('autoViewDrones', JSON.stringify(autoViewDrones))
+        } catch {
+            // Ignore storage failures.
+        }
+    }, [autoViewDrones])
 
     useEffect(() => {
         const fetchDrones = async () => {
@@ -56,6 +77,8 @@ export default function Dashboard() {
                     focusRequestId={focusRequestId}
                     maxIntensityByDrone={maxIntensityByDrone}
                     setMaxIntensityByDrone={setMaxIntensityByDrone}
+                    selectedDrone={selectedDrone}
+                    setSelectedDrone={setSelectedDrone}
                 />
                 <div className="drones-panel">
                     <div className="drones-panel-header">
@@ -64,8 +87,28 @@ export default function Dashboard() {
                             {activeDrones.length}/{totalDrones}
                         </span>
                     </div>
+                    <div className="drones-panel-filters" style={{ padding: '0 20px 12px 20px', display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                        <input 
+                            type="text" 
+                            placeholder="Filter by Drone Name / ID..." 
+                            value={filterName} 
+                            onChange={e => setFilterName(e.target.value)}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none' }}
+                        />
+                        <input 
+                            type="text" 
+                            placeholder="Filter by Region / Zone..." 
+                            value={filterRegion} 
+                            onChange={e => setFilterRegion(e.target.value)}
+                            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', fontSize: '13px', outline: 'none' }}
+                        />
+                    </div>
                     <div className="drones-list">
-                        {drones.map((drone) => {
+                        {drones.filter(drone => {
+                            const matchesName = drone.name.toLowerCase().includes(filterName.toLowerCase()) || drone.id.toLowerCase().includes(filterName.toLowerCase())
+                            const matchesRegion = (drone.zone || '').toLowerCase().includes(filterRegion.toLowerCase())
+                            return matchesName && matchesRegion
+                        }).map((drone) => {
                             const threshold = Number(maxIntensityByDrone[drone.id] ?? 100)
                             const density = Number(drone.headcountDensity || 0)
                             const isLiveDrone = drone.status === 'active' || drone.status === 'debug'
@@ -78,9 +121,28 @@ export default function Dashboard() {
                                     threshold={threshold}
                                     isCritical={isCritical}
                                     isFocused={focusedDroneId === drone.id}
+                                    isAutoView={!!autoViewDrones[drone.id]}
+                                    onToggleView={(e) => {
+                                        e.stopPropagation()
+                                        setAutoViewDrones(prev => ({
+                                            ...prev,
+                                            [drone.id]: !prev[drone.id]
+                                        }))
+                                    }}
+                                    onThresholdChange={(newThreshold) => {
+                                        setMaxIntensityByDrone(prev => ({
+                                            ...prev,
+                                            [drone.id]: newThreshold
+                                        }))
+                                    }}
                                     onClick={() => {
                                         setFocusedDroneId(drone.id)
                                         setFocusRequestId((prev) => prev + 1)
+                                        if (autoViewDrones[drone.id]) {
+                                            setSelectedDrone(drone)
+                                        } else {
+                                            setSelectedDrone(null)
+                                        }
                                     }}
                                 />
                             )

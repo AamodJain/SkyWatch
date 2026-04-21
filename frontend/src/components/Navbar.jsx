@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Bell, Settings, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
 import { useNotification } from '../context/NotificationContext'
+import { useSettings } from '../context/SettingsContext'
 
 const pageTitles = {
     '/': 'Command Center',
@@ -13,8 +14,11 @@ export default function Navbar() {
     const location = useLocation()
     const [currentTime, setCurrentTime] = useState(new Date())
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const dropdownRef = useRef(null)
+    const settingsRef = useRef(null)
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification()
+    const { hideFleetLabels, setHideFleetLabels, dashboardTextSize, setDashboardTextSize, showLivePanelInfo, setShowLivePanelInfo, theme, setTheme } = useSettings()
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -25,6 +29,9 @@ export default function Navbar() {
         function handleClickOutside(event) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsNotificationOpen(false)
+            }
+            if (settingsRef.current && !settingsRef.current.contains(event.target)) {
+                setIsSettingsOpen(false)
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
@@ -116,9 +123,63 @@ export default function Navbar() {
                     )}
                 </div>
 
-                <button className="navbar-btn" id="settings-btn">
-                    <Settings size={18} />
-                </button>
+                <div className="notification-wrapper" ref={settingsRef}>
+                    <button className="navbar-btn" id="settings-btn" onClick={() => setIsSettingsOpen(!isSettingsOpen)}>
+                        <Settings size={18} />
+                    </button>
+                    {isSettingsOpen && (
+                        <div className="notification-dropdown settings-dropdown" style={{ width: '250px' }}>
+                            <div className="notification-header">
+                                <h3>Settings</h3>
+                            </div>
+                            <div className="notification-list" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: 'none' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '13px' }}>Hide Fleet Labels</span>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={hideFleetLabels} 
+                                        onChange={(e) => setHideFleetLabels(e.target.checked)} 
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '13px' }}>Show Live Panel Info</span>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={showLivePanelInfo} 
+                                        onChange={(e) => setShowLivePanelInfo(e.target.checked)} 
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '13px' }}>Dashboard Text Size</span>
+                                    <select 
+                                        value={dashboardTextSize} 
+                                        onChange={(e) => setDashboardTextSize(e.target.value)}
+                                        style={{ background: 'var(--color-bg-secondary)', color: 'white', padding: '6px', borderRadius: '4px', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                                    >
+                                        <option value="very-small">Very Small</option>
+                                        <option value="small">Small</option>
+                                        <option value="medium">Normal</option>
+                                        <option value="large">Large</option>
+                                        <option value="very-large">Very Large</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <span style={{ fontSize: '13px' }}>Theme</span>
+                                    <select 
+                                        value={theme} 
+                                        onChange={(e) => setTheme(e.target.value)}
+                                        style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                                    >
+                                        <option value="dark">Dark Mode</option>
+                                        <option value="light">Light Mode</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     )

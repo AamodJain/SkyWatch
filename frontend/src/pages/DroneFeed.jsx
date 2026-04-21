@@ -68,7 +68,7 @@ export default function DroneFeed() {
     const [streamMetricsByVideo, setStreamMetricsByVideo] = useState({})
     const [frameIndex, setFrameIndex] = useState(0)
     const maxIntensity = 100
-    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
 
     useEffect(() => {
         const fetchDrones = async () => {
@@ -142,7 +142,7 @@ export default function DroneFeed() {
                 <div className="feed-card" style={{ padding: 16, marginBottom: 16 }}>
                     No active live streams found. Start the stream processor to publish live data.
                     {!debugPlayback && (
-                        <span style={{ display: 'block', marginTop: 8, color: '#94a3b8' }}>
+                        <span style={{ display: 'block', marginTop: 8, color: 'var(--color-text-secondary)' }}>
                             For quick UI debugging, open this page with <strong>?debugPlayback=1</strong>.
                         </span>
                     )}
@@ -187,15 +187,17 @@ export default function DroneFeed() {
                                     // Priority 3: non-playable protocol without MediaMTX proxy
                                     ) : isNonPlayableUrl(drone.video_url) ? (
                                         <div className="feed-video-placeholder" style={{ gap: 10, padding: '24px 16px' }}>
-                                            <Radio size={40} style={{ color: '#10b981', animation: 'pulse 1.5s infinite' }} />
-                                            <span style={{ fontWeight: 700, fontSize: 14, color: '#e2e8f0' }}>
-                                                {drone.name} — Live Stream Active
-                                            </span>
-                                            <span style={{ fontSize: 11, color: '#64748b', wordBreak: 'break-all', maxWidth: 280, textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <Radio size={40} style={{ color: 'var(--color-accent-green)', animation: 'pulse 1.5s infinite' }} />
+                                                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text-primary)' }}>
+                                                    {drone.name} — Live Connection
+                                                </span>
+                                            </div>
+                                            <span style={{ fontSize: 11, color: 'var(--color-text-muted)', wordBreak: 'break-all', maxWidth: 280, textAlign: 'center' }}>
                                                 {drone.video_url}
                                             </span>
-                                            <span style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                                                This stream protocol cannot be played directly in a browser.
+                                            <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 4 }}>
+                                                Non-browser protocol. Backend is relaying metrics.
                                             </span>
                                         </div>
                                     // Priority 4: local file or HTTP MJPEG — try native <video>

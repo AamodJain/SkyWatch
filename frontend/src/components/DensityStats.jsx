@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Users, Plane, Activity, AlertTriangle } from 'lucide-react'
+import { Users, BarChart3, AlertTriangle } from 'lucide-react'
+import { useSettings } from '../context/SettingsContext'
+import droneIcon from '../assets/drone.png'
+
+const DroneImageIcon = ({ size }) => <img src={droneIcon} alt="Drone" style={{ width: size, height: size, objectFit: 'contain' }} />
 
 export default function DensityStats() {
     const [liveData, setLiveData] = useState({ headcount: 0 });
@@ -7,7 +11,7 @@ export default function DensityStats() {
     const [totalDroneCount, setTotalDroneCount] = useState(0);
     const [criticalZonesCount, setCriticalZonesCount] = useState(0);
     const [avgDensity, setAvgDensity] = useState(0);
-    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
 
     useEffect(() => {
         const fetchDrones = async () => {
@@ -69,7 +73,7 @@ export default function DensityStats() {
 
     const stats = [
         {
-            label: 'Total People Detected',
+            label: 'Estimated Crowd Count',
             value: totalPeople.toLocaleString(),
             trend: 'Live Stream',
             trendDir: 'up',
@@ -81,15 +85,15 @@ export default function DensityStats() {
             value: `${activeDrones} / ${totalDroneCount}`,
             trend: 'Online',
             trendDir: 'up',
-            icon: Plane,
+            icon: DroneImageIcon,
             color: 'green',
         },
         {
-            label: 'Avg. Density / Zone',
+            label: 'Average Crowd',
             value: avgDensity.toLocaleString(),
-            trend: '+5%',
-            trendDir: 'up',
-            icon: Activity,
+            trend: '',
+            trendDir: '',
+            icon: BarChart3,
             color: 'purple',
         },
         {

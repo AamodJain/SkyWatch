@@ -27,12 +27,28 @@ function formatTimelineLabel(date, windowKey) {
     })
 }
 
+const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div style={customTooltipStyle}>
+                <p style={{ margin: '0 0 5px 0', fontWeight: 600 }}>{label}</p>
+                {payload.map((entry, index) => (
+                    <p key={index} style={{ margin: '2px 0', color: entry.stroke || entry.fill }}>
+                        {entry.name}: {entry.value}
+                    </p>
+                ))}
+            </div>
+        )
+    }
+    return null
+}
+
 const customTooltipStyle = {
-    backgroundColor: '#1a1f36',
-    border: '1px solid #2d3555',
+    backgroundColor: 'var(--color-bg-card)',
+    border: '1px solid var(--color-border)',
     borderRadius: '8px',
-    padding: '10px 14px',
-    color: '#f1f5f9',
+    padding: '12px',
+    color: 'var(--color-text-primary)',
     fontSize: '12px',
 }
 
@@ -231,10 +247,10 @@ export default function Analytics() {
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#2d3555" />
-                                <XAxis dataKey="timeLabel" stroke="#64748b" fontSize={12} />
-                                <YAxis stroke="#64748b" fontSize={12} />
-                                <Tooltip contentStyle={customTooltipStyle} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                <XAxis dataKey="timeLabel" stroke="var(--color-text-muted)" fontSize={12} />
+                                <YAxis stroke="var(--color-text-muted)" fontSize={12} />
+                                <Tooltip content={<CustomTooltip />} />
                                 <Legend />
                                 <Area type="monotone" dataKey="density" name="Density"
                                     stroke="#3b82f6" fill="url(#gradDensity)" strokeWidth={2} />
@@ -245,7 +261,7 @@ export default function Analytics() {
                                     height={24}
                                     stroke="#3b82f6"
                                     travellerWidth={10}
-                                    fill="#111827"
+                                    fill="var(--color-bg-secondary)"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -259,10 +275,10 @@ export default function Analytics() {
                     <div className="chart-container">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={zoneDensity} layout="vertical">
-                                <CartesianGrid strokeDasharray="3 3" stroke="#2d3555" />
-                                <XAxis type="number" stroke="#64748b" fontSize={12} />
-                                <YAxis dataKey="zone" type="category" stroke="#64748b" fontSize={11} width={100} />
-                                <Tooltip contentStyle={customTooltipStyle} />
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                <XAxis type="number" stroke="var(--color-text-muted)" fontSize={12} />
+                                <YAxis dataKey="zone" type="category" stroke="var(--color-text-muted)" fontSize={11} width={100} />
+                                <Tooltip content={<CustomTooltip />} />
                                 <Bar dataKey="density" name="People" radius={[0, 6, 6, 0]}>
                                     {zoneDensity.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -285,11 +301,11 @@ export default function Analytics() {
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={4}
+                                    outerRadius={80}
+                                    paddingAngle={5}
                                     dataKey="value"
                                     label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}
-                                    labelLine={{ stroke: '#64748b' }}
+                                    labelLine={{ stroke: 'var(--color-text-muted)' }}
                                 >
                                     {pieData.map((entry, index) => (
                                         <Cell
