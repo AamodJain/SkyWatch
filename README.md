@@ -19,7 +19,7 @@ From project root:
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate
+ .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
@@ -53,7 +53,8 @@ Open a new terminal, from project root:
 
 ```bash
 cd drone_heatmap_backend
-source ../backend/venv/bin/activate
+..\backend\venv\Scripts\Activate.ps1  
+python stream_processor.py --source "..\media\videos\droneVid.mp4" --fps 5 --drone-id DRN-001 --drone-name Alpha-1 --zone "India Gate" --latitude 28.6139 --longitude 77.2090 --altitude 100 --loop true --model sdnet
 ```
 
 ### Start a single stream
