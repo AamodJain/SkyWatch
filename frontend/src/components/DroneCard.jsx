@@ -3,7 +3,49 @@ import { Battery, ArrowUp, Users, Eye, Edit2 } from 'lucide-react'
 import droneIcon from '../assets/drone.png'
 import { useSettings } from '../context/SettingsContext'
 
-export default function DroneCard({ drone, threshold = 100, isCritical = false, onClick, isFocused = false, isAutoView = false, onToggleView, onThresholdChange }) {
+/**
+ * Highlights occurrences of `term` inside `text` by wrapping them in <mark>.
+ */
+function HighlightedText({ text, term }) {
+    if (!term || !text) return <>{text}</>
+
+    const lowerText = text.toLowerCase()
+    const lowerTerm = term.toLowerCase()
+    const parts = []
+    let cursor = 0
+
+    while (cursor < text.length) {
+        const matchIdx = lowerText.indexOf(lowerTerm, cursor)
+        if (matchIdx === -1) {
+            parts.push(text.slice(cursor))
+            break
+        }
+        if (matchIdx > cursor) {
+            parts.push(text.slice(cursor, matchIdx))
+        }
+        parts.push(
+            <mark key={matchIdx} className="drone-name-highlight">
+                {text.slice(matchIdx, matchIdx + term.length)}
+            </mark>
+        )
+        cursor = matchIdx + term.length
+    }
+
+    return <>{parts}</>
+}
+
+export default function DroneCard({
+    drone,
+    threshold = 100,
+    isCritical = false,
+    onClick,
+    isFocused = false,
+    isAutoView = false,
+    onToggleView,
+    onThresholdChange,
+    searchTerm = '',
+    regionLabel = '',
+}) {
     const badgeClass = isCritical ? 'critical' : drone.status
     const badgeLabel = isCritical ? 'critical' : drone.status
     const { hideFleetLabels, dashboardTextSize } = useSettings()
@@ -19,7 +61,7 @@ export default function DroneCard({ drone, threshold = 100, isCritical = false, 
             <div className="drone-card-top">
                 <div className="drone-name">
                     <img src={droneIcon} alt="Drone" style={{ width: 16, height: 16, objectFit: 'contain' }} />
-                    {drone.name}
+                    <HighlightedText text={drone.name} term={searchTerm} />
                 </div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <button
@@ -72,6 +114,14 @@ export default function DroneCard({ drone, threshold = 100, isCritical = false, 
                     </span>
                 </div>
             </div>
+
+            {/* Region label — shown when available */}
+            {regionLabel && (
+                <div className="drone-region-label">
+                    <MapPin size={10} />
+                    {regionLabel}
+                </div>
+            )}
 
             <div className="drone-card-stats">
                 <div className="drone-stat">

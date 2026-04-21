@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapContainer, TileLayer, Circle, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { X, Video, BarChart3, SlidersHorizontal, Radio } from 'lucide-react'
+import { X, Video, BarChart3, SlidersHorizontal, Radio, RotateCcw } from 'lucide-react'
 import { useNotification } from '../context/NotificationContext'
 import { useSettings } from '../context/SettingsContext'
 import HlsPlayer from './HlsPlayer'
@@ -205,7 +205,75 @@ function MapFocusController({ targetDrone, focusRequestId, circleRefs }) {
     return null
 }
 
-    // ─── Main Component ───────────────────────────────────
+// ─── Geocode a region name via Nominatim search ──────────────────────────────
+const NOMINATIM_SEARCH = 'https://nominatim.openstreetmap.org/search'
+
+async function geocodeRegion(query) {
+    const url = `${NOMINATIM_SEARCH}?q=${encodeURIComponent(query + ', India')}&format=json&limit=1&addressdetails=0`
+    try {
+        const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
+        if (!res.ok) return null
+        const data = await res.json()
+        if (!data.length) return null
+        const { boundingbox } = data[0]
+        // boundingbox: [minLat, maxLat, minLng, maxLng]
+        return [
+            [Number(boundingbox[0]), Number(boundingbox[2])],
+            [Number(boundingbox[1]), Number(boundingbox[3])],
+        ]
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Watches filterState / filterDistrict and flies the map to the matched region.
+ * District takes priority; falls back to state; clears to India view when both reset.
+ */
+function MapRegionController({ filterState, filterDistrict }) {
+    const map = useMap()
+
+    useEffect(() => {
+        // Determine what to geocode: district > state > nothing
+        const query = filterDistrict !== 'all'
+            ? `${filterDistrict}${filterState !== 'all' ? ', ' + filterState : ''}`
+            : filterState !== 'all'
+                ? filterState
+                : null
+
+        if (!query) {
+            // Both cleared — reset to India overview
+            map.flyTo([22.5, 80.0], 5, { duration: 1.2 })
+            return
+        }
+
+        let cancelled = false
+        geocodeRegion(query).then(bounds => {
+            if (cancelled || !bounds) return
+            map.flyToBounds(bounds, { padding: [40, 40], maxZoom: filterDistrict !== 'all' ? 13 : 8, duration: 1.2 })
+        })
+
+        return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterState, filterDistrict])
+
+    return null
+}
+
+/**
+ * Watches resetTrigger and flies the map back to the full India overview.
+ */
+function MapResetController({ resetTrigger }) {
+    const map = useMap()
+
+    useEffect(() => {
+        if (resetTrigger <= 0) return
+        map.flyTo([22.5, 80.0], 5, { duration: 1.2 })
+    }, [map, resetTrigger])
+
+    return null
+}
+
 export default function MapView({
     focusedDroneId = null,
     focusRequestId = 0,
@@ -213,6 +281,8 @@ export default function MapView({
     setMaxIntensityByDrone = () => {},
     selectedDrone = null,
     setSelectedDrone = () => {},
+    filterState = 'all',
+    filterDistrict = 'all',
 }) {
     const { processStreamData } = useNotification()
     const { showLivePanelInfo, theme } = useSettings()
@@ -225,7 +295,10 @@ export default function MapView({
     const center = activeDrones.length > 0
         ? [Number(activeDrones[0].latitude || defaultCenter[0]), Number(activeDrones[0].longitude || defaultCenter[1])]
         : defaultCenter
-    
+
+    // ── Reset trigger: increment to fly back to India overview ────────────────
+    const [resetTrigger, setResetTrigger] = useState(0)
+
     // Refs for intervals to prevent stale closures
     const dronesRef = useRef(drones)
     const maxIntensityRef = useRef(maxIntensityByDrone)
@@ -430,6 +503,19 @@ export default function MapView({
                         </span>
                     </div>
                 </div>
+                <div className="map-controls">
+                    <button
+                        className="map-control-btn map-reset-btn"
+                        id="map-reset-btn"
+                        onClick={() => setResetTrigger(t => t + 1)}
+                        title="Reset to India view"
+                    >
+                        <RotateCcw size={13} />
+                        Reset View
+                    </button>
+                    <button className="map-control-btn" id="satellite-toggle">Satellite</button>
+                    <button className="map-control-btn" id="markers-toggle">Markers</button>
+                </div>
             </div>
 
             <MapContainer
@@ -454,6 +540,8 @@ export default function MapView({
                     reuseTiles={true}
                 />
                 <MapFocusController targetDrone={focusedDrone} focusRequestId={focusRequestId} circleRefs={circleRefs} />
+                <MapRegionController filterState={filterState} filterDistrict={filterDistrict} />
+                <MapResetController resetTrigger={resetTrigger} />
                 <HeatmapLayer data={dynamicHeatmapData} />
                 {activeDrones.map((drone) => {
                     const isLiveDrone = drone.status === 'active' || drone.status === 'debug'
