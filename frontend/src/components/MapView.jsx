@@ -241,7 +241,7 @@ export default function MapView({
     const [loopVideo, setLoopVideo] = useState(true)
     const [isDraggingDetails, setIsDraggingDetails] = useState(false)
     const [detailsPanelPosition, setDetailsPanelPosition] = useState({ x: 18, y: 92 })
-    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
     const focusedDrone = useMemo(
         () => drones.find((d) => d.id === focusedDroneId) || null,
         [drones, focusedDroneId]

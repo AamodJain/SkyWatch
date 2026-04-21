@@ -68,7 +68,7 @@ export default function DroneFeed() {
     const [streamMetricsByVideo, setStreamMetricsByVideo] = useState({})
     const [frameIndex, setFrameIndex] = useState(0)
     const maxIntensity = 100
-    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
 
     useEffect(() => {
         const fetchDrones = async () => {

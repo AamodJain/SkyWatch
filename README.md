@@ -44,7 +44,7 @@ npm run dev
 Frontend will be available at:
 
 - http://localhost:5173
-
+- http://localhost:5173/?debugPlayback=1 (for Debug Mode)
 ---
 
 ## 3) Run Drone Video Streaming Processor

@@ -11,7 +11,7 @@ export default function DensityStats() {
     const [totalDroneCount, setTotalDroneCount] = useState(0);
     const [criticalZonesCount, setCriticalZonesCount] = useState(0);
     const [avgDensity, setAvgDensity] = useState(0);
-    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
 
     useEffect(() => {
         const fetchDrones = async () => {

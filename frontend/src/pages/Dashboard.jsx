@@ -4,7 +4,7 @@ import DensityStats from '../components/DensityStats'
 import DroneCard from '../components/DroneCard'
 
 export default function Dashboard() {
-    const debugPlayback = true // new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
     const [drones, setDrones] = useState([])
     const [focusedDroneId, setFocusedDroneId] = useState(null)
     const [focusRequestId, setFocusRequestId] = useState(0)
