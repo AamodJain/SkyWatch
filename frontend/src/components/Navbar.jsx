@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Bell, Settings, AlertTriangle, Info, CheckCircle2 } from 'lucide-react'
+import { Switch, Select, MenuItem } from '@mui/material'
 import { useNotification } from '../context/NotificationContext'
 import { useSettings } from '../context/SettingsContext'
 
@@ -27,6 +28,15 @@ export default function Navbar() {
 
     useEffect(() => {
         function handleClickOutside(event) {
+            // Ignore if element was removed from DOM
+            if (!document.contains(event.target)) return;
+
+            // Ignore clicks outside the main React root (e.g., inside MUI Portals like Select dropdowns)
+            const rootElement = document.getElementById('root');
+            if (rootElement && !rootElement.contains(event.target)) {
+                return;
+            }
+
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsNotificationOpen(false)
             }
@@ -60,9 +70,7 @@ export default function Navbar() {
                     <h1 className="navbar-title">
                         {pageTitles[location.pathname] || 'Dashboard'}
                     </h1>
-                    <div className="navbar-breadcrumb">
-                        SkyWatch / {pageTitles[location.pathname] || 'Page'}
-                    </div>
+
                 </div>
             </div>
 
@@ -135,46 +143,31 @@ export default function Navbar() {
                             <div className="notification-list" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: 'none' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ fontSize: '13px' }}>Hide Fleet Labels</span>
-                                    <input 
-                                        type="checkbox" 
+                                    <Switch 
                                         checked={hideFleetLabels} 
                                         onChange={(e) => setHideFleetLabels(e.target.checked)} 
-                                        style={{ cursor: 'pointer' }}
+                                        size="small"
                                     />
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span style={{ fontSize: '13px' }}>Show Live Panel Info</span>
-                                    <input 
-                                        type="checkbox" 
+                                    <Switch 
                                         checked={showLivePanelInfo} 
                                         onChange={(e) => setShowLivePanelInfo(e.target.checked)} 
-                                        style={{ cursor: 'pointer' }}
+                                        size="small"
                                     />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <span style={{ fontSize: '13px' }}>Dashboard Text Size</span>
-                                    <select 
-                                        value={dashboardTextSize} 
-                                        onChange={(e) => setDashboardTextSize(e.target.value)}
-                                        style={{ background: 'var(--color-bg-secondary)', color: 'white', padding: '6px', borderRadius: '4px', border: '1px solid var(--color-border)', cursor: 'pointer' }}
-                                    >
-                                        <option value="very-small">Very Small</option>
-                                        <option value="small">Small</option>
-                                        <option value="medium">Normal</option>
-                                        <option value="large">Large</option>
-                                        <option value="very-large">Very Large</option>
-                                    </select>
-                                </div>
+
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <span style={{ fontSize: '13px' }}>Theme</span>
-                                    <select 
+                                    <Select 
                                         value={theme} 
                                         onChange={(e) => setTheme(e.target.value)}
-                                        style={{ background: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)', padding: '6px', borderRadius: '4px', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                                        size="small"
                                     >
-                                        <option value="dark">Dark Mode</option>
-                                        <option value="light">Light Mode</option>
-                                    </select>
+                                        <MenuItem value="dark">Dark Mode</MenuItem>
+                                        <MenuItem value="light">Light Mode</MenuItem>
+                                    </Select>
                                 </div>
                             </div>
                         </div>

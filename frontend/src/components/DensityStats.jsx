@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Users, BarChart3, AlertTriangle } from 'lucide-react'
+import { Users, BarChart3, AlertTriangle, Info } from 'lucide-react'
 import { useSettings } from '../context/SettingsContext'
 import droneIcon from '../assets/drone.png'
 
@@ -12,6 +12,7 @@ export default function DensityStats() {
     const [criticalZonesCount, setCriticalZonesCount] = useState(0);
     const [avgDensity, setAvgDensity] = useState(0);
     const debugPlayback = new URLSearchParams(window.location.search).get('debugPlayback') === '1'
+    const [expandedInfo, setExpandedInfo] = useState(null);
 
     useEffect(() => {
         const fetchDrones = async () => {
@@ -79,6 +80,7 @@ export default function DensityStats() {
             trendDir: 'up',
             icon: Users,
             color: 'blue',
+            description: 'Total estimated number of people detected across all active drone feeds.',
         },
         {
             label: 'Active Drones',
@@ -87,6 +89,7 @@ export default function DensityStats() {
             trendDir: 'up',
             icon: DroneImageIcon,
             color: 'green',
+            description: 'Number of drones currently online and streaming live footage out of the total fleet.',
         },
         {
             label: 'Average Crowd',
@@ -95,6 +98,7 @@ export default function DensityStats() {
             trendDir: '',
             icon: BarChart3,
             color: 'purple',
+            description: 'Average number of people detected per active drone stream.',
         },
         {
             label: 'Critical Zones',
@@ -103,6 +107,7 @@ export default function DensityStats() {
             trendDir: alertsCount > 0 ? 'up' : 'down',
             icon: AlertTriangle,
             color: 'amber',
+            description: 'Number of zones where the detected crowd size exceeds the defined critical threshold.',
         },
     ]
 
@@ -121,7 +126,19 @@ export default function DensityStats() {
                             </span>
                         </div>
                         <div className="stat-card-value">{stat.value}</div>
-                        <div className="stat-card-label">{stat.label}</div>
+                        <div className="stat-card-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {stat.label}
+                            <Info 
+                                size={14} 
+                                style={{ color: 'var(--color-text-muted)', cursor: 'pointer' }} 
+                                onClick={() => setExpandedInfo(expandedInfo === i ? null : i)}
+                            />
+                        </div>
+                        {expandedInfo === i && (
+                            <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--color-text-secondary)', lineHeight: '1.4', padding: '8px', borderRadius: '6px', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-primary)' }}>
+                                {stat.description}
+                            </div>
+                        )}
                     </div>
                 )
             })}

@@ -5,8 +5,8 @@ export default function About() {
     return (
         <div className="about-page">
             <div className="about-header">
-                <div className="about-logo" style={{ background: 'transparent' }}>
-                    <img src={iitRoparLogo} alt="IIT Ropar Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'var(--logo-filter)' }} />
+                <div className="about-logo">
+                    <img src={iitRoparLogo} alt="IIT Ropar Logo" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
                 </div>
                 <h1>SkyWatch</h1>
                 <p className="about-subtitle">Drone Surveillance Portal</p>

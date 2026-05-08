@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { MapContainer, TileLayer, Circle, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Circle, Popup, useMap, Marker, FeatureGroup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { X, Video, BarChart3, SlidersHorizontal, Radio, RotateCcw } from 'lucide-react'
@@ -89,11 +89,12 @@ function getDroneFootprintRadiusMeters(drone) {
 }
 
 function getVideoNameFromUrl(url) {
+    if (!url) return ''
     try {
         const parsed = new URL(url)
-        return parsed.pathname.split('/').pop() || ''
+        return (parsed.pathname || '').split(/[\/\\]/).pop() || ''
     } catch {
-        return (url || '').split('/').pop() || ''
+        return String(url).split(/[\/\\]/).pop() || ''
     }
 }
 
@@ -154,20 +155,7 @@ function HeatmapLayer({ data }) {
         }
     }, [data])
 
-    useEffect(() => {
-        const forceRedraw = () => {
-            if (!heatLayerRef.current || !heatLayerRef.current._map) return
-            heatLayerRef.current.redraw()
-        }
 
-        map.on('move', forceRedraw)
-        map.on('zoom', forceRedraw)
-
-        return () => {
-            map.off('move', forceRedraw)
-            map.off('zoom', forceRedraw)
-        }
-    }, [map])
 
     useEffect(() => {
         return () => {
@@ -194,6 +182,7 @@ function MapFocusController({ targetDrone, focusRequestId, circleRefs }) {
 
         if (circleRefs?.current?.[targetDrone.id]) {
             setTimeout(() => {
+                map.closePopup()
                 const circle = circleRefs.current[targetDrone.id]
                 if (circle && circle.openPopup) {
                     circle.openPopup()
@@ -269,6 +258,7 @@ function MapResetController({ resetTrigger }) {
     useEffect(() => {
         if (resetTrigger <= 0) return
         map.flyTo([22.5, 80.0], 5, { duration: 1.2 })
+        map.closePopup()
     }, [map, resetTrigger])
 
     return null
@@ -283,6 +273,8 @@ export default function MapView({
     setSelectedDrone = () => {},
     filterState = 'all',
     filterDistrict = 'all',
+    setFocusedDroneId = () => {},
+    setFocusRequestId = () => {},
 }) {
     const { processStreamData } = useNotification()
     const { showLivePanelInfo, theme } = useSettings()
@@ -298,6 +290,7 @@ export default function MapView({
 
     // ── Reset trigger: increment to fly back to India overview ────────────────
     const [resetTrigger, setResetTrigger] = useState(0)
+    const [showMarkers, setShowMarkers] = useState(false)
 
     // Refs for intervals to prevent stale closures
     const dronesRef = useRef(drones)
@@ -319,7 +312,8 @@ export default function MapView({
         () => drones.find((d) => d.id === focusedDroneId) || null,
         [drones, focusedDroneId]
     )
-    const tileTheme = theme === 'light' ? 'light_all' : 'dark_all'
+    // User requested the map to always use the light theme tiles
+    const tileTheme = 'light_all'
     const mapTileUrl = `https://{s}.basemaps.cartocdn.com/${tileTheme}/{z}/{x}/{y}{r}.png`
 
     useEffect(() => {
@@ -491,6 +485,12 @@ export default function MapView({
         return points;
     }, [frameData.headcount_density, activeDrones, center, streamMetricsByVideo, maxIntensityByDrone]);
 
+    const handleDroneClick = (drone) => {
+        setSelectedDrone(drone)
+        setFocusedDroneId(drone.id)
+        setFocusRequestId(prev => prev + 1)
+    }
+
     return (
         <div className="map-container">
             <div className="map-header">
@@ -498,23 +498,29 @@ export default function MapView({
                     <div className="map-header-title">Live Heatmap View</div>
                     <div className="map-header-subtitle">
                         Real-time crowd density overlay · {activeDrones.length} active drones
-                        <span style={{ marginLeft: 12, color: 'var(--color-accent-green)' }}>
-                            · Live Frame {frameData.frame_index}
-                        </span>
                     </div>
                 </div>
                 <div className="map-controls">
                     <button
                         className="map-control-btn map-reset-btn"
                         id="map-reset-btn"
-                        onClick={() => setResetTrigger(t => t + 1)}
+                        onClick={() => {
+                            setResetTrigger(t => t + 1)
+                            setSelectedDrone(null)
+                            setFocusedDroneId(null)
+                        }}
                         title="Reset to India view"
                     >
                         <RotateCcw size={13} />
                         Reset View
                     </button>
-                    <button className="map-control-btn" id="satellite-toggle">Satellite</button>
-                    <button className="map-control-btn" id="markers-toggle">Markers</button>
+                    <button 
+                        className={`map-control-btn ${showMarkers ? 'active' : ''}`} 
+                        id="markers-toggle"
+                        onClick={() => setShowMarkers(m => !m)}
+                    >
+                        Markers
+                    </button>
                 </div>
             </div>
 
@@ -524,20 +530,11 @@ export default function MapView({
                 className="leaflet-map"
                 zoomControl={true}
                 preferCanvas={true}
-                fadeAnimation={true}
                 maxZoom={18}
-                zoomSnap={0.5}
-                zoomDelta={0.5}
-                wheelPxPerZoomLevel={60}
-                wheelDebounceTime={40}
             >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url={mapTileUrl}
-                    keepBuffer={8}
-                    updateWhenZooming={false}
-                    updateWhenIdle={true}
-                    reuseTiles={true}
                 />
                 <MapFocusController targetDrone={focusedDrone} focusRequestId={focusRequestId} circleRefs={circleRefs} />
                 <MapRegionController filterState={filterState} filterDistrict={filterDistrict} />
@@ -557,7 +554,7 @@ export default function MapView({
                     const viewAngleDeg = getDroneViewAngle(drone)
                     const footprintRadiusMeters = getDroneFootprintRadiusMeters(drone)
 
-                    return (
+                    const circleElement = (
                         <Circle
                             key={drone.id}
                             ref={(r) => {
@@ -573,7 +570,7 @@ export default function MapView({
                                 stroke: false,
                             }}
                             eventHandlers={{
-                                click: () => setSelectedDrone(drone),
+                                click: () => handleDroneClick(drone),
                             }}
                         >
                             <Popup>
@@ -590,6 +587,35 @@ export default function MapView({
                             </Popup>
                         </Circle>
                     )
+
+                    return (
+                        <FeatureGroup key={`container-${drone.id}`}>
+                            {circleElement}
+                            {showMarkers && (
+                                <Marker 
+                                    position={[drone.latitude, drone.longitude]}
+                                    icon={L.divIcon({
+                                        className: 'custom-colored-marker',
+                                        html: `<div style="background-color: ${color}; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>`,
+                                        iconSize: [16, 16],
+                                        iconAnchor: [8, 8]
+                                    })}
+                                    eventHandlers={{
+                                        click: () => handleDroneClick(drone),
+                                    }}
+                                >
+                                    <Popup>
+                                        <div style={{ color: 'var(--color-text-primary)', fontSize: '13px', lineHeight: 1.6 }}>
+                                            <strong>{drone.name}</strong> ({drone.id})<br />
+                                            Zone: {drone.zone || 'Live Stream Zone'}<br />
+                                            People: {Math.round(headcount || 0)}<br />
+                                            Crowd Level: <strong style={{ color }}>{densityLabel}</strong>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            )}
+                        </FeatureGroup>
+                    )
                 })}
             </MapContainer>
 
@@ -597,7 +623,7 @@ export default function MapView({
             {/* ─── Live Data Badge ─── */}
             <div className="playback-controls">
                 <span className="frame-label">
-                    Live F{frameData.frame_index} | {Math.round(frameData.headcount_density)} Estimated Crowd Count
+                    {Math.round(frameData.headcount_density)} Estimated Crowd Count
                 </span>
             </div>
 
@@ -715,10 +741,7 @@ export default function MapView({
                                             Real-Time Detection Data
                                         </h4>
                                         <div className="csv-data-grid">
-                                            <div className="csv-stat">
-                                                <span className="csv-stat-label">Frame</span>
-                                                <span className="csv-stat-value">{frameData.frame_index}</span>
-                                            </div>
+
                                             <div className="csv-stat">
                                                 <span className="csv-stat-label">Peak Points</span>
                                                 <span className="csv-stat-value">{Number(selectedDroneMetrics?.points_count ?? selectedDrone.peopleCounted ?? 0)}</span>

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 const NOMINATIM_BASE = 'https://nominatim.openstreetmap.org/reverse'
 
 // Bump this number whenever the extraction logic changes to discard stale entries
-const CACHE_VERSION = 3
+const CACHE_VERSION = 4
 
 // Module-level cache — survives re-renders and component unmounts
 const _cache = new Map()
@@ -78,11 +78,11 @@ export function useRegionResolver(drones) {
             ''
 
           // If the resolved "state" looks like an ISO code, use state_district instead
-          const cleanState = /^[A-Z]{2}-[A-Z]{2,}$/.test(state)
+          let cleanState = /^[A-Z]{2}-[A-Z]{2,}$/.test(state)
             ? addr.state_district || addr.region || ''
             : state
 
-          const district =
+          let district =
             addr.county ||
             addr.city_district ||
             addr.district ||
@@ -92,6 +92,18 @@ export function useRegionResolver(drones) {
             addr.village ||
             addr.suburb ||
             ''
+
+          // Special case for Delhi: Ensure state is "Delhi" and map district correctly
+          if (
+              state === 'IN-DL' || 
+              String(cleanState).toLowerCase().includes('delhi') || 
+              String(district).toLowerCase().includes('delhi')
+          ) {
+              cleanState = 'Delhi'
+              if (district.toLowerCase() === 'delhi' || district === '') {
+                  district = addr.county || addr.city_district || addr.city || addr.suburb || 'New Delhi'
+              }
+          }
 
           _cache.set(key, { state: cleanState, district })
         } catch {

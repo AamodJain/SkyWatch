@@ -200,6 +200,8 @@ export default function Dashboard() {
                     setSelectedDrone={setSelectedDrone}
                     filterState={filterState}
                     filterDistrict={filterDistrict}
+                    setFocusedDroneId={setFocusedDroneId}
+                    setFocusRequestId={setFocusRequestId}
                 />
 
                 <div className="drones-panel">
@@ -272,11 +274,7 @@ export default function Dashboard() {
                                     onClick={() => {
                                         setFocusedDroneId(drone.id)
                                         setFocusRequestId(prev => prev + 1)
-                                        if (autoViewDrones[drone.id]) {
-                                            setSelectedDrone(drone)
-                                        } else {
-                                            setSelectedDrone(null)
-                                        }
+                                        setSelectedDrone(drone)
                                     }}
                                 />
                             ))

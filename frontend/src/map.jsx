@@ -108,7 +108,7 @@ export function LeafletHeatmapMap({
   showMarkers = true,
   showHubMarker = true,
 }) {
-  const resolvedTileUrl = tileUrl || (theme === 'light' ? CARTO_TILE_URL_LIGHT : CARTO_TILE_URL_DARK)
+  const resolvedTileUrl = tileUrl || CARTO_TILE_URL_LIGHT
 
   return (
     <MapContainer

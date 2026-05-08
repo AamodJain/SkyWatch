@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search, X, SlidersHorizontal } from 'lucide-react'
+import { Select, MenuItem } from '@mui/material'
 
 /**
  * FleetFilterBar — search input, "Filters" popup trigger, active-filter pills.
@@ -75,6 +76,13 @@ export default function FleetFilterBar({
   useEffect(() => {
     if (!popupOpen) return
     const handler = (e) => {
+      // Ignore if element was removed from DOM
+      if (!document.contains(e.target)) return;
+
+      // Ignore clicks outside the main React root (e.g., inside MUI Portals like Select dropdowns)
+      const rootElement = document.getElementById('root');
+      if (rootElement && !rootElement.contains(e.target)) return;
+
       if (
         popupRef.current   && !popupRef.current.contains(e.target) &&
         triggerRef.current && !triggerRef.current.contains(e.target)
@@ -189,57 +197,65 @@ export default function FleetFilterBar({
           {/* Body */}
           <div className="filter-popup-body">
             <label className="filter-popup-label" htmlFor="fp-state">State</label>
-            <select
+            <Select
               id="fp-state"
               className="filter-popup-select"
               value={filterState}
               onChange={e => { onStateChange(e.target.value); onDistrictChange('all') }}
+              size="small"
+              fullWidth
             >
-              <option value="all">All States</option>
+              <MenuItem value="all">All States</MenuItem>
               {availableStates.map(s => (
-                <option key={s} value={s}>{s}</option>
+                <MenuItem key={s} value={s}>{s}</MenuItem>
               ))}
-            </select>
+            </Select>
 
             <label className="filter-popup-label" htmlFor="fp-district">District</label>
-            <select
+            <Select
               id="fp-district"
               className="filter-popup-select"
               value={filterDistrict}
               onChange={e => onDistrictChange(e.target.value)}
+              size="small"
+              fullWidth
             >
-              <option value="all">All Districts</option>
+              <MenuItem value="all">All Districts</MenuItem>
               {availableDistricts.map(d => (
-                <option key={d} value={d}>{d}</option>
+                <MenuItem key={d} value={d}>{d}</MenuItem>
               ))}
-            </select>
+            </Select>
 
             <label className="filter-popup-label" htmlFor="fp-status">Zone Status</label>
-            <select
+            <Select
               id="fp-status"
               className="filter-popup-select"
               value={filterStatus}
               onChange={e => onStatusChange(e.target.value)}
+              size="small"
+              fullWidth
             >
-              <option value="all">All Zones</option>
-              <option value="critical">⚠ Critical</option>
-              <option value="safe">✓ Safe</option>
-            </select>
+              <MenuItem value="all">All Zones</MenuItem>
+              <MenuItem value="critical">⚠ Critical</MenuItem>
+              <MenuItem value="safe">✓ Safe</MenuItem>
+            </Select>
 
             <label className="filter-popup-label" htmlFor="fp-sort">Sort By</label>
-            <select
+            <Select
               id="fp-sort"
               className="filter-popup-select filter-popup-select--sort"
               value={sortBy}
               onChange={e => onSortChange(e.target.value)}
+              size="small"
+              fullWidth
             >
-              <option value="default">Default</option>
-              <option value="name-asc">Name A → Z</option>
-              <option value="name-desc">Name Z → A</option>
-              <option value="headcount-desc">Headcount ↓</option>
-              <option value="battery-asc">Battery ↑</option>
-              <option value="critical-first">Critical First</option>
-            </select>
+              <MenuItem value="default">Default</MenuItem>
+              <MenuItem value="name-asc">Name A → Z</MenuItem>
+              <MenuItem value="name-desc">Name Z → A</MenuItem>
+              <MenuItem value="headcount-desc">Headcount ↓</MenuItem>
+              <MenuItem value="battery-asc">Battery ↑</MenuItem>
+              <MenuItem value="critical-first">Critical First</MenuItem>
+            </Select>
           </div>
 
           {/* Footer */}
