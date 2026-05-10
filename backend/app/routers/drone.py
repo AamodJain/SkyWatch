@@ -142,58 +142,86 @@ def _build_url_stream_drones(file_video_names: set[str]) -> list[dict]:
     return drones
 
 
+def _load_all_configs() -> dict[str, dict]:
+    """Read all drone configs from the drone_configs DB table. Returns {drone_id: config}."""
+    try:
+        from app.db import get_db_cursor
+        with get_db_cursor(dict_rows=True) as (_, cur):
+            cur.execute("SELECT * FROM drone_configs")
+            rows = cur.fetchall()
+            return {r["drone_id"]: dict(r) for r in rows}
+    except Exception as e:
+        print(f"[drone] _load_all_configs DB error: {e}")
+        return {}
+
+
 def _build_drones_payload() -> list[dict]:
     files = _list_video_files()
     file_video_names = {v.name for v in files}
     active_source_names = _get_active_sources()
 
-    base_lat, base_lng = 28.6139, 77.2090
+    # Load all saved configs so idle drones use correct name/zone/coords
+    saved_configs = _load_all_configs()
+
     drones: list[dict] = []
 
-    # ── 1. File-backed drones (media/videos/) ──────────────────────────
+    # ── 1. Active file-backed drones ────────────────────────────────────
     for idx, video in enumerate(files):
         is_active = video.name in active_source_names
+        if not is_active:
+            continue   # skip non-active file drones — handled below via configs
 
-        stream_data = _get_stream_data_for_source(video.name) if is_active else None
+        stream_data = _get_stream_data_for_source(video.name)
+        if not stream_data:
+            continue
 
-        if is_active and stream_data:
-            points = int(stream_data.get("points_count") or 0)
-            density = float(stream_data.get("headcount") or 0.0)
-            drone_id = stream_data.get("drone_id") or f"DRN-{idx + 1:03d}"
-            name = stream_data.get("drone_name") or video.stem
-            zone = stream_data.get("zone") or "Live Stream Zone"
-            lat = float(stream_data.get("latitude") or base_lat + (idx * 0.003))
-            lng = float(stream_data.get("longitude") or base_lng + (idx * 0.003))
-            altitude = float(stream_data.get("altitude") or 100)
-        else:
-            points = 0
-            density = 0.0
-            drone_id = f"DRN-{idx + 1:03d}"
-            name = video.stem
-            zone = "Live Stream Zone"
-            lat = base_lat + (idx * 0.003)
-            lng = base_lng + (idx * 0.003)
-            altitude = 100
+        points = int(stream_data.get("points_count") or 0)
+        density = float(stream_data.get("headcount") or 0.0)
+        drone_id = stream_data.get("drone_id") or f"DRN-{idx + 1:03d}"
+        name = stream_data.get("drone_name") or video.stem
+        zone = stream_data.get("zone") or "Live Stream Zone"
+        lat = float(stream_data.get("latitude")) if stream_data.get("latitude") is not None else None
+        lng = float(stream_data.get("longitude")) if stream_data.get("longitude") is not None else None
+        altitude = float(stream_data.get("altitude") or 100)
 
-        drones.append(
-            {
-                "id": drone_id,
-                "name": name,
-                "status": "active" if is_active else "idle",
-                "latitude": lat,
-                "longitude": lng,
-                "altitude": altitude,
-                "battery": 100,
-                "peopleCounted": points,
-                "headcountDensity": density,
-                "zone": zone,
-                "video_url": f"http://localhost:{settings.API_PORT}/videos/{video.name}",
-                "stream_protocol": "file",
-            }
-        )
+        drones.append({
+            "id": drone_id,
+            "name": name,
+            "status": "active",
+            "latitude": lat,
+            "longitude": lng,
+            "altitude": altitude,
+            "battery": 100,
+            "peopleCounted": points,
+            "headcountDensity": density,
+            "zone": zone,
+            "video_url": f"http://localhost:{settings.API_PORT}/videos/{video.name}",
+            "stream_protocol": "file",
+        })
 
-    # ── 2. Live URL-stream drones (RTSP / RTMP / HTTP …) ───────────────
+    # ── 2. Live URL-stream drones ────────────────────────────────────────
     drones.extend(_build_url_stream_drones(file_video_names))
+
+    # ── 3. Saved (stopped) drones from config files ──────────────────────
+    # Only include if not already covered above as active
+    active_ids = {d["id"] for d in drones}
+    for drone_id, cfg in saved_configs.items():
+        if drone_id in active_ids:
+            continue   # already shown as active
+        drones.append({
+            "id": drone_id,
+            "name": cfg.get("drone_name", drone_id),
+            "status": "idle",
+            "latitude": cfg.get("latitude"),
+            "longitude": cfg.get("longitude"),
+            "altitude": cfg.get("altitude"),
+            "battery": None,
+            "peopleCounted": 0,
+            "headcountDensity": 0.0,
+            "zone": cfg.get("zone", "Standby"),
+            "video_url": cfg.get("source"),
+            "stream_protocol": "file",
+        })
 
     return drones
 
@@ -213,23 +241,19 @@ def _is_live_stream_active() -> bool:
 
 @router.get("/")
 async def get_drones(include_debug: bool = False):
-    """Get active drones — both file-backed and live URL streams.
-
-    Set include_debug=true to also expose idle file-playback drones for UI debugging.
-    """
+    """Get drones — active streams, idle saved-config drones, and debug playback."""
     live_active = _is_live_stream_active()
     debug_mode = include_debug or settings.ALLOW_DEBUG_PLAYBACK
-    if not live_active and not debug_mode:
-        return {
-            "drones": [],
-            "count": 0,
-            "video_dir": settings.MEDIA_VIDEOS_DIR,
-            "live_active": False,
-            "debug_mode": False,
-        }
 
+    # Always build the full payload (includes stopped/idle drones from saved configs)
     drones = _build_drones_payload()
-    if not live_active and debug_mode:
+
+    # If not live and not debug, strip out any purely "debug" file-backed drones
+    # but keep saved-config idle drones so Fleet Status always shows them.
+    if not live_active and not debug_mode:
+        # Only keep drones that came from saved configs (they have real details)
+        drones = [d for d in drones if d.get("status") == "idle"]
+    elif not live_active and debug_mode:
         drones = [{**d, "status": "debug"} for d in drones]
 
     return {

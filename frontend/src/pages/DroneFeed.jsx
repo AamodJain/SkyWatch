@@ -233,7 +233,8 @@ export default function DroneFeed() {
                                 </div>
                                 <div className="feed-location">
                                     <MapPin size={12} style={{ display: 'inline', marginRight: 4 }} />
-                                    {drone.zone || 'Live Stream Zone'} · {Number(drone.latitude || 0).toFixed(4)}, {Number(drone.longitude || 0).toFixed(4)}
+                                    {drone.zone || 'Standby Zone'} 
+                                    {drone.latitude && drone.longitude ? ` · ${Number(drone.latitude).toFixed(4)}, ${Number(drone.longitude).toFixed(4)}` : ' · Location Unavailable'}
                                 </div>
                                 <div className="feed-meta">
                                     <div className="feed-meta-item">

@@ -36,4 +36,9 @@ class Settings:
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_IDS: str = os.getenv("TELEGRAM_CHAT_IDS", "")
 
+    # Auth / JWT
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "skywatch_jwt_super_secret_change_me")
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRE_HOURS: int = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
+
 settings = Settings()

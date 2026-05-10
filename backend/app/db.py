@@ -96,8 +96,46 @@ def _ensure_sqlite_schema(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_density_drone_timestamp
             ON density_records (drone_id, timestamp DESC);
+
+        CREATE TABLE IF NOT EXISTS users (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            hashed_password TEXT NOT NULL,
+            role     TEXT NOT NULL DEFAULT 'member'
+        );
+
+        CREATE TABLE IF NOT EXISTS drone_configs (
+            drone_id   TEXT PRIMARY KEY,
+            drone_name TEXT NOT NULL,
+            source     TEXT NOT NULL,
+            latitude   REAL NOT NULL,
+            longitude  REAL NOT NULL,
+            altitude   REAL DEFAULT 100.0,
+            zone       TEXT DEFAULT 'Live Stream Zone',
+            fps        INTEGER DEFAULT 5,
+            loop       INTEGER DEFAULT 0,
+            model      TEXT DEFAULT 'sdnet',
+            device     TEXT DEFAULT 'cpu',
+            status     TEXT DEFAULT 'stopped',
+            created_at REAL DEFAULT (strftime('%s','now')),
+            updated_at REAL DEFAULT (strftime('%s','now'))
+        );
     """)
     conn.commit()
+
+    # Seed default admin (password: "admin") if not present
+    try:
+        from app.utils.security import hash_password
+        cur.execute("SELECT id FROM users WHERE username = ?", ("admin",))
+        if not cur.fetchone():
+            cur.execute(
+                "INSERT INTO users (username, hashed_password, role) VALUES (?, ?, ?)",
+                ("admin", hash_password("admin"), "admin"),
+            )
+            conn.commit()
+    except Exception as exc:
+        print(f"[DB] Warning: could not seed SQLite admin user: {exc}")
+
 
 
 class _SqliteRealDictRow(dict):
@@ -223,7 +261,6 @@ def ensure_schema() -> None:
         return   # schema already created in _init_sqlite()
 
     if _backend == "postgres" and _db_pool is not None:
-        from psycopg2.extras import RealDictCursor
         conn = _db_pool.getconn()
         try:
             cur = conn.cursor()
@@ -253,10 +290,56 @@ def ensure_schema() -> None:
             """)
             cur.execute("CREATE INDEX IF NOT EXISTS idx_density_timestamp ON density_records (timestamp DESC)")
             cur.execute("CREATE INDEX IF NOT EXISTS idx_density_drone_timestamp ON density_records (drone_id, timestamp DESC)")
+
+            # ── Users table (auth) ─────────────────────────────────────────
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id              SERIAL PRIMARY KEY,
+                    username        VARCHAR(100) UNIQUE NOT NULL,
+                    hashed_password TEXT NOT NULL,
+                    role            VARCHAR(20) NOT NULL DEFAULT 'member',
+                    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Seed default admin on first run (password: "admin")
+            # We import here to avoid a circular import at module level.
+            try:
+                from app.utils.security import hash_password
+                cur.execute(
+                    """
+                    INSERT INTO users (username, hashed_password, role)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (username) DO NOTHING
+                    """,
+                    ("admin", hash_password("admin"), "admin"),
+                )
+            except Exception as seed_exc:
+                print(f"[DB] Warning: could not seed admin user: {seed_exc}")
+
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS drone_configs (
+                    drone_id   VARCHAR(50) PRIMARY KEY,
+                    drone_name VARCHAR(100) NOT NULL,
+                    source     TEXT NOT NULL,
+                    latitude   DOUBLE PRECISION NOT NULL,
+                    longitude  DOUBLE PRECISION NOT NULL,
+                    altitude   DOUBLE PRECISION DEFAULT 100.0,
+                    zone       VARCHAR(200) DEFAULT 'Live Stream Zone',
+                    fps        INTEGER DEFAULT 5,
+                    loop       BOOLEAN DEFAULT FALSE,
+                    model      VARCHAR(50) DEFAULT 'sdnet',
+                    device     VARCHAR(50) DEFAULT 'cpu',
+                    status     VARCHAR(20) DEFAULT 'stopped',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+
             conn.commit()
             cur.close()
         finally:
             _db_pool.putconn(conn)
+
 
 
 @contextmanager

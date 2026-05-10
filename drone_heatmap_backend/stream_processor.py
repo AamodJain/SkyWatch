@@ -162,9 +162,9 @@ def process_stream(
                 # ── POST to backend ──────────────────────────────────────
                 try:
                     response = requests.post(API_UPDATE_URL, json=payload, timeout=2)
-                    print(f"Frame {frame_count}: Headcount {headcount:.1f} → {response.status_code}")
+                    print(f"Frame {frame_count}: Headcount {headcount:.1f} -> {response.status_code}")
                 except requests.exceptions.RequestException as e:
-                    print(f"Frame {frame_count}: Headcount {headcount:.1f} → Backend unavailable ({e})")
+                    print(f"Frame {frame_count}: Headcount {headcount:.1f} -> Backend unavailable ({e})")
 
                 # ── Enforce target FPS ───────────────────────────────────
                 elapsed = time.time() - start_time

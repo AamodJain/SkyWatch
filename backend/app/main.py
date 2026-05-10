@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.db import init_db_pool, close_db_pool, ensure_schema, is_using_memory_db
 from app.routers import density, drone, alerts
+from app.routers.auth import router as auth_router
 import os
 
 app = FastAPI(
@@ -23,6 +24,8 @@ app.add_middleware(
 app.include_router(density.router)
 app.include_router(drone.router)
 app.include_router(alerts.router)
+app.include_router(auth_router)
+
 
 os.makedirs(settings.MEDIA_VIDEOS_DIR, exist_ok=True)
 app.mount("/videos", StaticFiles(directory=settings.MEDIA_VIDEOS_DIR), name="videos")

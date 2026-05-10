@@ -1,12 +1,15 @@
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import Navbar from './components/Navbar'
+import ProtectedRoute from './components/ProtectedRoute'
 import { NotificationProvider } from './context/NotificationContext'
 import { SettingsProvider } from './context/SettingsContext'
+import { AuthProvider } from './context/AuthContext'
 import Dashboard from './pages/Dashboard'
 import DroneFeed from './pages/DroneFeed'
 import Analytics from './pages/Analytics'
 import About from './pages/About'
+import Login from './pages/Login'
 import { useSettings } from './context/SettingsContext'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { useMemo } from 'react'
@@ -95,22 +98,37 @@ function AppContent() {
 
   return (
     <ThemeProvider theme={muiTheme}>
-      <NotificationProvider>
-        <div className="app-layout">
-          <Sidebar />
-          <div className="main-content">
-            <Navbar />
-            <div className="page-content">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/feeds" element={<DroneFeed />} />
-                <Route path="/analytics" element={<Analytics />} />
-                <Route path="/about" element={<About />} />
-              </Routes>
-            </div>
-          </div>
-        </div>
-      </NotificationProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <Routes>
+            {/* Public */}
+            <Route path="/login" element={<Login />} />
+
+            {/* Protected — full dashboard layout */}
+            <Route
+              path="/*"
+              element={
+                <ProtectedRoute>
+                  <div className="app-layout">
+                    <Sidebar />
+                    <div className="main-content">
+                      <Navbar />
+                      <div className="page-content">
+                        <Routes>
+                          <Route path="/" element={<Dashboard />} />
+                          <Route path="/feeds" element={<DroneFeed />} />
+                          <Route path="/analytics" element={<Analytics />} />
+                          <Route path="/about" element={<About />} />
+                        </Routes>
+                      </div>
+                    </div>
+                  </div>
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </NotificationProvider>
+      </AuthProvider>
     </ThemeProvider>
   )
 }
