@@ -7,20 +7,37 @@ export function AuthProvider({ children }) {
     const [token, setToken] = useState(null)
     const [loading, setLoading] = useState(true)
 
-    // Restore session from localStorage on mount
+    // Restore session from localStorage on mount and verify it
     useEffect(() => {
-        const storedToken = localStorage.getItem('sw_token')
-        const storedUser = localStorage.getItem('sw_user')
-        if (storedToken && storedUser) {
-            try {
-                setToken(storedToken)
-                setUser(JSON.parse(storedUser))
-            } catch {
-                localStorage.removeItem('sw_token')
-                localStorage.removeItem('sw_user')
+        const verifySession = async () => {
+            const storedToken = localStorage.getItem('sw_token')
+            const storedUser = localStorage.getItem('sw_user')
+            
+            if (storedToken && storedUser) {
+                try {
+                    // Temporarily set them
+                    setToken(storedToken)
+                    setUser(JSON.parse(storedUser))
+                    
+                    // Verify token with backend
+                    const res = await fetch('http://localhost:8000/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${storedToken}` }
+                    })
+                    
+                    if (!res.ok) {
+                        throw new Error('Token invalid or expired')
+                    }
+                } catch {
+                    setToken(null)
+                    setUser(null)
+                    localStorage.removeItem('sw_token')
+                    localStorage.removeItem('sw_user')
+                }
             }
+            setLoading(false)
         }
-        setLoading(false)
+        
+        verifySession()
     }, [])
 
     const login = (tokenStr, userObj) => {

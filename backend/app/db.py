@@ -59,11 +59,16 @@ def _try_init_postgres(minconn: int = 1, maxconn: int = 8) -> bool:
 def _init_sqlite() -> None:
     global _sqlite_conn, _backend
     # check_same_thread=False + external lock = safe for FastAPI thread pool
-    _sqlite_conn = sqlite3.connect(":memory:", check_same_thread=False)
+    
+    # Use a persistent local file instead of :memory: so data isn't lost on restart
+    import os
+    db_path = os.path.join(os.path.dirname(__file__), "..", "skywatch.db")
+    _sqlite_conn = sqlite3.connect(db_path, check_same_thread=False)
+    
     _sqlite_conn.row_factory = sqlite3.Row   # dict-like rows
     _backend = "sqlite"
     _ensure_sqlite_schema(_sqlite_conn)
-    print("[DB] In-memory SQLite database initialized.")
+    print(f"[DB] Persistent SQLite database initialized at {db_path}")
 
 
 def _ensure_sqlite_schema(conn: sqlite3.Connection) -> None:

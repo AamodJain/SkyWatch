@@ -1,193 +1,191 @@
-# SkyWatch – Drone Surveillance Portal
+# SkyWatch – Real-time Drone Surveillance Portal
 
-Real-time crowd-density monitoring using drone video streams, CV-based person detection, FastAPI APIs, and a React + Leaflet dashboard.
-
-## Local Development Setup
-
-### Prerequisites
-
-- Python 3.10+
-- Node.js 18+
-- npm
+<div align="center">
+  <h3>Real-time crowd-density monitoring using drone video streams, CV-based person detection, FastAPI APIs, and a modern React + Leaflet dashboard.</h3>
+</div>
 
 ---
 
-## 1) Run Backend (FastAPI)
+## 📖 Overview
 
-From project root:
+**SkyWatch** is a comprehensive fleet management and surveillance platform designed to ingest and analyze live drone video streams. By applying advanced Computer Vision (CV) models on the incoming feeds, it estimates crowd density and provides actionable intelligence in real time. 
 
+The system features a sleek, interactive dashboard that visualizes active drone assets on a live map, highlights dense crowds via heatmaps, displays live video feeds inline, and tracks telemetry across the fleet.
+
+### ✨ Key Features
+
+- **Multi-Protocol Video Ingestion**: Supports real-time drone feeds via RTSP, RTMP, HTTP MJPEG, or simulated streams from local `.mp4` files.
+- **AI-Powered Crowd Density**: Utilizes deep learning models (SDNet or YOLO) via PyTorch to accurately estimate headcounts in live frames.
+- **Dynamic Heatmaps & Telemetry**: Renders live drone coordinates, altitude, battery status, and geospatial crowd heatmaps directly onto a Leaflet-based map.
+- **Resilient Backend architecture**: Powered by FastAPI with automatic fallback to an in-memory SQLite database if a production PostgreSQL instance is unavailable.
+- **Telegram Alert Integration**: Automatic push notifications to security personnel when anomalous activity or extreme crowd density is detected.
+- **Sleek React Dashboard**: A modern Vite + React frontend featuring live HLS video playback, dark/light mode toggles, and dynamic UI filtering.
+
+---
+
+## 🏗 System Architecture
+
+The project is structured into three primary micro-services:
+
+1. **`frontend/`** (Vite + React + Tailwind CSS / MUI)
+   - The interactive dashboard. Connects to the backend API to fetch drone telemetry and fetches live HLS video feeds (re-broadcasted from MediaMTX) to display directly in the browser.
+2. **`backend/`** (FastAPI + SQLAlchemy)
+   - The central nervous system. Receives POST requests from the CV processors containing headcounts and coordinates, and serves this state to the frontend via REST endpoints.
+3. **`drone_heatmap_backend/`** (Python + PyTorch + OpenCV)
+   - The CV stream processor. Connects to the raw video source (RTSP/file), runs the frames through the selected AI model, and posts the density data to the backend.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+To run SkyWatch locally, you will need:
+- **Python 3.10+**
+- **Node.js 18+** and **npm**
+- *(Optional but recommended)* **MediaMTX** and **FFmpeg** for simulating live RTSP streams.
+- *(Optional)* **PostgreSQL** for persistent production database storage.
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/your-username/SkyWatch.git
+cd SkyWatch
+```
+
+---
+
+### 2. Configure Environment Variables
+
+Copy the example environment file and update it with your actual secrets if required. For local development, the defaults usually suffice.
+
+```bash
+cp .env.example .env
+```
+
+---
+
+### 3. Start the FastAPI Backend
+
+The backend defaults to an in-memory SQLite database, making it extremely easy to test without complex database configurations.
+
+**Linux / macOS:**
 ```bash
 cd backend
 python3 -m venv venv
- .\venv\Scripts\Activate.ps1
+source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Backend will be available at:
-
-- API root: http://localhost:8000
-- Health: http://localhost:8000/health
+**Windows (PowerShell):**
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+*The API will be available at `http://localhost:8000`. Check `http://localhost:8000/health` to confirm it is running.*
 
 ---
 
-## 2) Run Frontend (Vite + React)
+### 4. Start the React Frontend
 
-Open a new terminal, from project root:
+Open a **new terminal** window:
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+*The dashboard will be available at `http://localhost:5173`.*
 
-Frontend will be available at:
-
-- http://localhost:5173
-- http://localhost:5173/?debugPlayback=1 (for Debug Mode)
 ---
 
-## 3) Run Drone Video Streaming Processor
+### 5. Start the CV Stream Processor
 
-Open a new terminal, from project root:
+The processor acts as the "eyes" of the drone. It connects to a video source, analyzes it, and sends data to the backend. Note: First-time setup may take a few minutes as it downloads PyTorch and model weights.
 
+Open a **new terminal** window:
+
+**Linux / macOS:**
 ```bash
 cd drone_heatmap_backend
-..\backend\venv\Scripts\Activate.ps1  
-python stream_processor.py --source "..\media\videos\droneVid.mp4" --fps 5 --drone-id DRN-001 --drone-name Alpha-1 --zone "India Gate" --latitude 28.6139 --longitude 77.2090 --altitude 100 --loop true --model sdnet
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
-### Start a single stream
+**Windows (PowerShell):**
+```powershell
+cd drone_heatmap_backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+#### Option A: Run with a Local Video File (Simulation)
+You can test the system immediately using a local MP4 file. The processor will loop the video continuously.
 
 ```bash
-python3 stream_processor.py \
-       --source ../media/videos/droneVid.mp4 \
-       --fps 5 \
-       --drone-id DRN-001 \
-       --drone-name Alpha-1 \
-       --zone "Live Stream Zone" \
-       --latitude 28.6139 \
-       --longitude 77.2090 \
-       --altitude 100 \
-       --loop true
-
-### IIT Ropar
-python3 stream_processor.py \
-       --source ../media/videos/droneVid2.mp4 \
-       --fps 5 \
-       --drone-id DRN-004 \
-       --drone-name Alpha-4 \
-       --zone "Live Stream Zone" \
-       --latitude 30.9683 \
-       --longitude 76.4732 \
-       --altitude 100 \
-       --loop true
-
-
-
-
-python3 stream_processor.py \
-       --source ../media/videos/droneVid3.mp4 \
-       --fps 5 \
-       --drone-id DRN-0014 \
-       --drone-name Alpha-6 \
-       --zone "Live Stream Zone" \
-      --latitude 28.7139 \
-       --longitude 77.2090 \
-       --altitude 100 \
-       --loop true
+python stream_processor.py \
+  --source "../media/videos/droneVid.mp4" \
+  --fps 5 \
+  --drone-id DRN-001 \
+  --drone-name "Alpha-1" \
+  --zone "Test Sector" \
+  --latitude 28.6139 \
+  --longitude 77.2090 \
+  --altitude 100 \
+  --loop true \
+  --model sdnet \
+  --device cpu
 ```
 
-### Start a second stream (parallel terminal)
+#### Option B: Run with a Live Drone Stream (RTSP/RTMP/HTTP)
+If you have a real drone or are running an RTSP server (like MediaMTX), simply provide the URL. The processor will automatically handle network disconnects and retries.
 
 ```bash
-cd /home/vikash-mehra/Tree/Drone/SkyWatch/drone_heatmap_backend
-source ../backend/venv/bin/activate
-python3 stream_processor.py \
-       --source /home/vikash-mehra/Tree/Drone/SkyWatch/media/videos/droneVid2.mp4 \
-       --fps 5 \
-       --drone-id DRN-002 \
-       --drone-name Bravo-2 \
-       --zone "India Gate" \
-       --latitude 28.5921 \
-       --longitude 77.2315 \
-       --altitude 85 \
-       --loop true
+python stream_processor.py \
+  --source "rtsp://your-drone-ip:554/live" \
+  --fps 5 \
+  --drone-id DRN-LIVE-01 \
+  --drone-name "DJI Mavic 3" \
+  --latitude 30.9683 \
+  --longitude 76.4732 \
+  --altitude 80
 ```
 
-> Run one `stream_processor.py` per drone feed in separate terminals.
-
-### Live URL (RTSP / RTMP / HTTP) — real drone feed
-
-Just pass the live URL as `--source`. The processor automatically detects it is a network stream
-and enables auto-reconnect (no looping, infinite retries by default):
-
-```bash
-# RTSP from a DJI / Parrot-style drone
-python3 stream_processor.py \
-       --source rtsp://192.168.1.10:554/live \
-       --fps 5 \
-       --drone-id DRN-LIVE-01 \
-       --drone-name "DJI Mavic 3" \
-       --zone "Campus Perimeter" \
-       --latitude 30.9683 \
-       --longitude 76.4732 \
-       --altitude 80
-
-# RTMP stream
-python3 stream_processor.py \
-       --source rtmp://live.example.com/live/stream-key \
-       --fps 5 \
-       --drone-id DRN-RTMP-01 \
-       --drone-name "RTMP Drone" \
-       --latitude 28.6139 --longitude 77.2090 --altitude 100
-
-# HTTP MJPEG (some IP cameras / GCS software output this)
-python3 stream_processor.py \
-       --source http://192.168.1.20:8080/video \
-       --fps 5 \
-       --drone-id DRN-HTTP-01 \
-       --drone-name "IP-Cam Drone" \
-       --latitude 28.6139 --longitude 77.2090 --altitude 60
-```
-
-**Key differences vs local files:**
-- `--loop` is ignored for live URLs (always false).
-- The processor auto-reconnects with exponential back-off (3 s → 6 s → … → 30 s max) when the stream drops.
-- Use `--max-reconnect-attempts N` to cap retries (default: 0 = infinite).
-- RTSP/RTMP feeds show a "Live Stream Active" placeholder in the dashboard
-  (browsers cannot play these protocols natively); HTTP-MJPEG and HLS streams play inline.
+> **Note:** To run multiple drones simultaneously, simply open additional terminals and run `stream_processor.py` with different `--drone-id`, coordinates, and `--source` values.
 
 ---
 
-## Typical Run Order
+## 📡 Live Stream Simulation Guide (Advanced)
 
-1. Start backend
-2. Start frontend
-3. Start one or more stream processors
-4. Open dashboard at http://localhost:5173
+If you want to simulate a true live streaming environment locally (so the frontend plays the video directly in the browser rather than a placeholder), refer to our detailed **[RUNBOOK.md](RUNBOOK.md)**. 
 
----
-
-## Useful Notes
-
-- Video files are served from `media/videos` via backend `/videos/*` routes.
-- Stream defaults are centralized in `drone_heatmap_backend/stream_config.py`.
-- Model selection for crowd density can be switched with `--model` (e.g. `sdnet` or `yolo`).
-- For SDNet, model path auto-detects the first `.pth` in `MovingDroneCrowd` if `--model-path` is omitted.
-- Loop behavior is controlled with `--loop true|false`.
-- If no live stream is active, drone cards may appear idle unless debug playback mode is enabled.
+The runbook provides step-by-step instructions on how to:
+1. Spin up a local **MediaMTX** RTSP server.
+2. Use **FFmpeg** to continuously push a local `.mp4` file to the RTSP server.
+3. Configure the dashboard to pick up the auto-generated HLS stream for seamless browser playback.
 
 ---
 
-## Project Layout
+## 🛠 Project Layout
 
 ```text
 SkyWatch/
-├── backend/                # FastAPI app
-├── frontend/               # React dashboard
-├── drone_heatmap_backend/  # Stream processing + detection pipeline
-├── media/videos/           # Source mp4 files for local streams
-├── database/               # SQL bootstrap
-└── docker-compose.yml
+├── backend/                # FastAPI application & API routers
+├── frontend/               # Vite + React Dashboard (Tailwind + MUI + Leaflet)
+├── drone_heatmap_backend/  # PyTorch CV pipeline & stream processing daemon
+├── media/                  # Sample video files for local simulation
+├── database/               # SQL scripts & database bootstrap
+├── .env.example            # Environment variables template
+├── README.md               # You are here
+└── RUNBOOK.md              # Advanced guide for simulating live RTSP streams
 ```
+
+## 📝 License
+
+This project is open-source and available under standard MIT guidelines. Feel free to fork, modify, and integrate into your own fleet management systems.
