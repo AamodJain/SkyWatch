@@ -44,7 +44,7 @@ To run SkyWatch locally, you will need:
 - **Python 3.10+**
 - **Node.js 18+** and **npm**
 - *(Optional but recommended)* **MediaMTX** and **FFmpeg** for simulating live RTSP streams.
-- *(Optional)* **PostgreSQL** for persistent production database storage.
+- **Docker** and **Docker Compose** to run the containerized PostgreSQL database.
 
 ### 1. Clone the Repository
 
@@ -65,9 +65,19 @@ cp .env.example .env
 
 ---
 
-### 3. Start the FastAPI Backend
+### 3. Start the Database (Dockerized)
 
-The backend defaults to an in-memory SQLite database, making it extremely easy to test without complex database configurations.
+SkyWatch uses a containerized PostGIS (PostgreSQL) database. To start it, run:
+
+```bash
+docker-compose up -d db
+```
+
+---
+
+### 4. Start the FastAPI Backend
+
+The backend connects to the Dockerized database automatically (ensure your `.env` is configured). If the database is completely unavailable, the system safely falls back to a persistent local SQLite database (`skywatch.db`) for testing.
 
 **Linux / macOS:**
 ```bash
@@ -90,7 +100,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
-### 4. Start the React Frontend
+### 5. Start the React Frontend
 
 Open a **new terminal** window:
 
@@ -103,7 +113,7 @@ npm run dev
 
 ---
 
-### 5. Start the CV Stream Processor
+### 6. Start the CV Stream Processor
 
 The processor acts as the "eyes" of the drone. It connects to a video source, analyzes it, and sends data to the backend. Note: First-time setup may take a few minutes as it downloads PyTorch and model weights.
 
@@ -125,23 +135,8 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-#### Option A: Run with a Local Video File (Simulation)
-You can test the system immediately using a local MP4 file. The processor will loop the video continuously.
-
-```bash
-python stream_processor.py \
-  --source "../media/videos/droneVid.mp4" \
-  --fps 5 \
-  --drone-id DRN-001 \
-  --drone-name "Alpha-1" \
-  --zone "Test Sector" \
-  --latitude 28.6139 \
-  --longitude 77.2090 \
-  --altitude 100 \
-  --loop true \
-  --model sdnet \
-  --device cpu
-```
+#### Option A: Run Simulation (Managed via Frontend)
+You don't need to manually start the stream processor for local MP4 files. Simulated drone feeds and crowd analyses can be directly triggered and managed by an Admin via the SkyWatch frontend dashboard. Ensure the backend and frontend are running, log in as an admin, and initiate the simulation directly from the UI.
 
 #### Option B: Run with a Live Drone Stream (RTSP/RTMP/HTTP)
 If you have a real drone or are running an RTSP server (like MediaMTX), simply provide the URL. The processor will automatically handle network disconnects and retries.
