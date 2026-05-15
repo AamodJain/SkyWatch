@@ -41,10 +41,12 @@ The project is structured into three primary micro-services:
 ### Prerequisites
 
 To run SkyWatch locally, you will need:
-- **Python 3.10+**
+- **Python 3.10 (strictly required)**
 - **Node.js 18+** and **npm**
 - *(Optional but recommended)* **MediaMTX** and **FFmpeg** for simulating live RTSP streams.
 - **Docker** and **Docker Compose** to run the containerized PostgreSQL database.
+
+> **Why Python 3.10?** In the AI/ML ecosystem, Python 3.10 is the universally supported standard. Newer versions of Python (like 3.12 or 3.14) lack stable pre-compiled C++ binaries ("wheels") for core dependencies like `numpy==1.26.3`, `torch`, and `opencv-python`. Sticking strictly to 3.10 guarantees that all deep learning libraries will install instantly without failing on complex C++ compiler errors.
 
 ### 1. Clone the Repository
 
@@ -82,7 +84,7 @@ The backend connects to the Dockerized database automatically (ensure your `.env
 **Linux / macOS:**
 ```bash
 cd backend
-python3 -m venv venv
+python3.10 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -91,7 +93,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 **Windows (PowerShell):**
 ```powershell
 cd backend
-python -m venv venv
+py -3.10 -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -122,7 +124,7 @@ Open a **new terminal** window:
 **Linux / macOS:**
 ```bash
 cd drone_heatmap_backend
-python3 -m venv venv
+python3.10 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -130,7 +132,7 @@ pip install -r requirements.txt
 **Windows (PowerShell):**
 ```powershell
 cd drone_heatmap_backend
-python -m venv venv
+py -3.10 -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
